@@ -1,56 +1,44 @@
 # Soft Actor-Critic (SAC) Implementation in PyTorch
 
-This is a PyTorch implementation of Soft Actor-Critic (SAC), an off-policy model-free reinforcement learning algorithm. SAC combines the benefits of off-policy learning with a maximum entropy framework to encourage exploration while maintaining sample efficiency.
+This is a PyTorch implementation of Soft Actor-Critic (SAC), an off-policy, model-free reinforcement learning algorithm. SAC leverages a maximum entropy framework to encourage exploration while maintaining sample efficiency.
+- Original paper: [Soft Actor-Critic](https://arxiv.org/pdf/1801.01290), [Soft Actor-Critic Algorithms and Applications](https://arxiv.org/pdf/1812.05905)
+- Original implementation: [pytorch_sac](https://github.com/denisyarats/pytorch_sac) from denisyarats
 
-Original paper: [Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor](https://arxiv.org/pdf/1801.01290), [Soft Actor-Critic Algorithms and Applications](https://arxiv.org/pdf/1812.05905)
-
-## Modifications of the original implementation
-- Implementation of SAC in PyTorch based on pytorch_sac from denisyarats
-- Added support for Gymnasium environment
-- Revamped the support for DMC in Gymnasium
-- Revamped the support for built-in video feature in Gymnasium
-- Updated the usages of packages
+## Modifications to the original implementation
+This implementation extends the original SAC by including:
+- Support for Gymnasium environments
+- Built-in video recording in Gymnasium
+- A DeepMind Control Suite (DMC) wrapper in Gymnasium
 
 ## Setup
-### Quick experiment
-Quick way to experiment with the SAC implementation:
-- Run the experiment.ipynb file in Google Colab
-- Follow through the steps to clone the repo and install packages
-- Experiment with different environment
+### Running an experiment in Colab
+- Open `experiment.ipynb` in Google Colab
+- Follow the steps to clone the repository and install dependencies
+- Train an SAC agent
 
-### Experiment on your own GPU
-Train an SAC agent on your own GPU
-- Download the file
-- Install packages
-- Start Training
+### Running locally on your GPU
+- Clone the repository
+- Install dependencies: `pip install -r requirements.txt`
+- Train an SAC agent
 
 ### Configurations
-Change configurations in the config folder to test out different parameters. To train the model, use
+To train the model, use:
 ```bash
 python train.py
 ```
 
-0r to specify a different environment:
+0r specify a different environment:
 
 ```bash
 python train.py env_type=gym env=Hopper-v5
 ```
+Modify configurations in the `config` folder to experiment with different model parameters. 
 
-Available environments include:
-
-Gymnasium (a maintained fork of OpenAI’s Gym library)
-- Hopper-v5
-- Walker2d-v5
-- HalfCheetah-v5
-- and more
-
-DMC (Deep Mind Control Suite)
-- cheetah_run
-- walker_walk
-- ball_in_cup_catch
-- and more
+Available environments:
+- Gymnasium: Hopper-v5, Walker2d-v5, HalfCheetah-v5, and more.
+- Deep Mind Control Suite: cheetah_run, walker_walk, ball_in_cup_catch, and more.
 
 ## Results
-The SAC implementation has been tested on . The results show competitive performance across various tasks with fixed hyperparameters.
+We tested the SAC implementation on Hopper-v5, Walker2d-v5, HalfCheetah-v5, Ant-v5, and Humanoid-v5. The results aligns closely with those reported in the original SAC paper.
 
-add result image here
+*Note: add result image here*
