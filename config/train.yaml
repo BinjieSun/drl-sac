@@ -1,12 +1,13 @@
 defaults:
     - agent: sac
 
-env: cheetah_run
+env_type: gym
+env: Walker2d-v5
 
 # this needs to be specified manually
 experiment: test_exp
 
-num_train_steps: 1e6
+num_train_steps: 3e6 # default: 1e6
 replay_buffer_capacity: ${num_train_steps}
 
 num_seed_steps: 5000
@@ -25,6 +26,11 @@ save_video: true
 
 
 seed: 1
+
+ckpt_frequency: 1000
+resume_training: false
+
+save_summary_freq: 100
 
 
 # hydra configuration
