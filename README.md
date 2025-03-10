@@ -5,7 +5,7 @@ This is a PyTorch implementation of Soft Actor-Critic (SAC), an off-policy, mode
 - Original implementation: [pytorch_sac](https://github.com/denisyarats/pytorch_sac) from denisyarats
 
 ## Modifications to the original implementation
-This implementation extends the original SAC by including:
+This SAC implementation extends the original one by including:
 - Support for Gymnasium environments
 - Built-in video recording in Gymnasium
 - A DeepMind Control Suite (DMC) wrapper in Gymnasium
