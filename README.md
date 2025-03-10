@@ -35,8 +35,8 @@ python train.py env_type=gym env=Hopper-v5
 Modify configurations in the `config` folder to experiment with different model parameters. 
 
 Available environments:
-- Gymnasium: Hopper-v5, Walker2d-v5, HalfCheetah-v5, and more.
-- Deep Mind Control Suite: cheetah_run, walker_walk, ball_in_cup_catch, and more.
+- Gymnasium: Hopper, Walker2d, HalfCheetah, and [more](https://gymnasium.farama.org/environments/mujoco/).
+- Deep Mind Control Suite: cheetah_run, walker_walk, ball_in_cup_catch, and [more](https://github.com/google-deepmind/dm_control/tree/main/dm_control/suite).
 
 ## Results
 We tested the SAC implementation on Hopper-v5, Walker2d-v5, HalfCheetah-v5, Ant-v5, and Humanoid-v5. The results aligns closely with those reported in the original SAC paper.
