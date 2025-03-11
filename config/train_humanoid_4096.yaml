@@ -1,5 +1,5 @@
 defaults:
-    - agent: sac
+    - agent: sac_4096
 
 env_type: gym
 env: Humanoid-v5
