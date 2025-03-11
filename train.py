@@ -273,7 +273,8 @@ class Workspace(object):
         self.save_checkpoint()
 
 
-@hydra.main(config_path='config/train.yaml', strict=True)
+# @hydra.main(config_path='config/train.yaml', strict=True)
+@hydra.main(config_path='config/train_humanoid.yaml', strict=True)
 def main(cfg):
     if not hasattr(cfg, 'ckpt_frequency'):
         cfg.ckpt_frequency = 100000  # 默认每1万步保存一次

@@ -2,3 +2,6 @@ __pycache__/
 .ipynb_checkpoints/
 exp
 tb
+summary
+slurm
+ckpt
