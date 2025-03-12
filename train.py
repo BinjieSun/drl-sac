@@ -20,12 +20,12 @@ import gymnasium as gym
 import hydra
 from hydra.utils import get_original_cwd
 
-def save_summary(writer, global_step, tag, avg_reward):
-    # for k, v in lr_dict.items():
-    #     writer.add_scalar(f'{tag}/{k}', v, global_step)
-    if avg_reward is not None:
-        writer.add_scalar(f'{tag}/average return', avg_reward, global_step)
-    writer.flush()
+# def save_summary(writer, global_step, tag, avg_reward):
+#     # for k, v in lr_dict.items():
+#     #     writer.add_scalar(f'{tag}/{k}', v, global_step)
+#     if avg_reward is not None:
+#         writer.add_scalar(f'{tag}/average return', avg_reward, global_step)
+#     writer.flush()
 
 class Workspace(object):
     def __init__(self, cfg):
@@ -43,14 +43,14 @@ class Workspace(object):
         self.ckpt_dir = os.path.join(project_root, 'ckpt')
         os.makedirs(self.ckpt_dir, exist_ok=True)
 
-        saved_tensorboard_path = os.path.join(project_root, 'summary')
-        os.makedirs(saved_tensorboard_path, exist_ok=True)
-        self.tb_writer = SummaryWriter(saved_tensorboard_path)
+        # saved_tensorboard_path = os.path.join(project_root, 'summary')
+        # os.makedirs(saved_tensorboard_path, exist_ok=True)
+        # self.tb_writer = SummaryWriter(saved_tensorboard_path)
 
         print(f'Checkpoint directory: {self.ckpt_dir}')
         
         # set the frquency to save checkpoint
-        self.ckpt_frequency = cfg.get('ckpt_frequency', 100000)
+        self.ckpt_frequency = cfg.get('ckpt_frequency', 1000)
 
         print(f"Config ckpt_frequency: {cfg.ckpt_frequency}, type: {type(cfg.ckpt_frequency)}")
 
@@ -178,8 +178,6 @@ class Workspace(object):
                         self.step)
         self.logger.dump(self.step)
 
-        return average_episode_reward
-
 
     def run(self):
         episode, episode_reward, terminated, truncated = 0, 0, True, False
@@ -195,36 +193,7 @@ class Workspace(object):
                 # evaluate agent periodically
                 if self.step > 0 and episode % self.cfg.save_summary_freq == 0:
                     self.logger.log('eval/episode', episode, self.step)
-                    average_episode_reward = self.evaluate()
-                    # lr_dict = {
-                    #     'actor lr': self.agent.actor_optimizer.param_groups[0]['lr'],
-                    #     'critic lr': self.agent.critic_optimizer.param_groups[0]['lr'],
-                    #     'alpha lr': self.agent.log_alpha_optimizer.param_groups[0]['lr']
-                    # }
-                    average_episode_reward = save_summary(self.tb_writer, self.step, f'{self.cfg.env} train', average_episode_reward)
-                
-                # if self.step > 0 and episode % self.cfg.save_summary_freq:
-                #     average_episode_reward = 0
-                #     for episode in range(self.cfg.num_eval_episodes):
-                #         obs, info = self.eval_env.reset()
-                #         self.agent.reset()
-                #         terminated, truncated = False, False
-                #         episode_reward = 0
-                #         while not (terminated or truncated): 
-                #             with utils.eval_mode(self.agent):
-                #                 action = self.agent.act(obs, sample=False)
-                #             obs, reward, terminated, truncated, info = self.eval_env.step(action)
-                #             episode_reward += reward
-
-                #         average_episode_reward += episode_reward
-                    
-                #     average_episode_reward /= self.cfg.num_eval_episodes
-                #     lr_dict = {
-                #         'actor lr': self.agent.actor_optimizer.param_groups[0]['lr'],
-                #         'critic lr': self.agent.critic_optimizer.param_groups[0]['lr'],
-                #         'alpha lr': self.agent.log_alpha_optimizer.param_groups[0]['lr']
-                #     }
-                #     save_summary(self.tb_writer, lr_dict, self.step, f'{self.cfg.env} train', average_episode_reward)
+                    self.evaluate()
 
                 # save checkpoint periodically
                 if self.step > 0 and episode % self.cfg.ckpt_frequency == 0:
@@ -271,6 +240,8 @@ class Workspace(object):
             self.step += 1
         # when all done, save checkpoint
         self.save_checkpoint()
+        self.logger.log('eval/episode', episode, self.step)
+        self.evaluate()
 
 
 @hydra.main(config_path='config/train.yaml', strict=True)
