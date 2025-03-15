@@ -1,14 +1,14 @@
 defaults:
-    - agent: sac_4096
+    - agent: sac
 
 env_type: gym
-env: Humanoid-v5
+env: Ant-v5
 
 # this needs to be specified manually
-experiment: test_exp_seed42_4096
+experiment: test_exp_seed1
 
-num_train_steps: 1e7 # default: 1e6
-replay_buffer_capacity: ${num_train_steps}
+num_train_steps: 3e6 # default: 1e6
+replay_buffer_capacity: 1e6
 
 num_seed_steps: 5000
 
@@ -25,7 +25,7 @@ log_save_tb: true
 save_video: true
 
 
-seed: 42
+seed: 1
 
 ckpt_frequency: 1000
 resume_training: false
