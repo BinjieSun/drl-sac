@@ -9,6 +9,7 @@ This SAC implementation extends the original one by introducing:
 - Support for Gymnasium environments
 - Built-in video recording in Gymnasium
 - A DeepMind Control Suite (DMC) wrapper in Gymnasium
+- Added model checkpoints to save the model and prevent data loss
 
 ## Setup
 ### Running an experiment in Colab
