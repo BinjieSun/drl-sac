@@ -1,0 +1,10 @@
+torch
+absl-py
+pyparsing
+termcolor
+tb-nightly
+imageio
+imageio-ffmpeg
+git+https://github.com/facebookresearch/hydra@0.11_branch
+gymnasium[mujoco]
+dm_control
