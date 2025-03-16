@@ -41,7 +41,7 @@ Available environments:
 
 ## Results
 We tested the SAC implementation on Hopper-v5, Walker2d-v5, HalfCheetah-v5, Ant-v5, and Humanoid-v5. The results aligns with those reported in the original SAC++ paper.
-[Video demo](https://www.youtube.com/watch?v=bmhs40LEKRk)
+[Video demo](https://www.youtube.com/watch?v=4yIPq6WdDSI)
 ![fig1](https://github.com/user-attachments/assets/c6d354a8-58db-4023-87a7-5fc268798a8b)
 ![fig2](https://github.com/user-attachments/assets/22cd0098-ad47-479d-93f1-0e5b4613727a)
 
