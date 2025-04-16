@@ -1,11 +1,11 @@
 defaults:
-    - agent: sac_4096
+    - agent: sac_4096_3e-4
 
 env_type: gym
 env: Humanoid-v5
 
 # this needs to be specified manually
-experiment: test_exp
+experiment: humanoid_4096_3e-4_s=1
 
 num_train_steps: 1e7 # default: 1e6
 replay_buffer_capacity: ${num_train_steps}
