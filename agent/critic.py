@@ -5,6 +5,7 @@ import torch.nn.functional as F
 
 import utils
 
+# from mygnn import MyGNN
 
 class DoubleQCritic(nn.Module):
     """Critic network, employes double Q-learning."""
@@ -13,6 +14,8 @@ class DoubleQCritic(nn.Module):
 
         self.Q1 = utils.mlp(obs_dim + action_dim, hidden_dim, 1, hidden_depth)
         self.Q2 = utils.mlp(obs_dim + action_dim, hidden_dim, 1, hidden_depth)
+        # self.Q1 = MyGNN(obs_dim, action_dim, hidden_dim, hidden_depth)
+        # self.Q2 = MyGNN(obs_dim, action_dim, hidden_dim, hidden_depth)
 
         self.outputs = dict()
         self.apply(utils.weight_init)
