@@ -274,7 +274,11 @@ class Workspace(object):
 
 
 # @hydra.main(config_path='config/train.yaml', strict=True)
-@hydra.main(config_path='config/train_humanoid.yaml', strict=True)
+# @hydra.main(config_path='config/train_humanoid.yaml', strict=True)
+@hydra.main(config_path='config/train_humanoid_1024_3e-4_s=1.yaml', strict=True)
+# @hydra.main(config_path='config/train_humanoid_1024_3e-4_s=42.yaml', strict=True)
+# @hydra.main(config_path='config/train_humanoid_4096_3e-4_s=1.yaml', strict=True)
+# @hydra.main(config_path='config/train_humanoid_4096_3e-4_s=42.yaml', strict=True)
 def main(cfg):
     if not hasattr(cfg, 'ckpt_frequency'):
         cfg.ckpt_frequency = 100000  # 默认每1万步保存一次
