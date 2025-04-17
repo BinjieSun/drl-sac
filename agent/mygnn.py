@@ -21,7 +21,7 @@ class NodeTypeSpecificMLP(nn.Module):
                 nn.Linear(hidden_channels, hidden_channels)
             )
     
-    def forward(self, x_feature_dict, device):
+    def forward(self, x_feature_dict):
         """
         x_feature_dict: node feature dictionary
         """
@@ -203,7 +203,7 @@ class MyGNN(torch.nn.Module):
         x_feature_dict, edge_index = self._obs_to_graph_features(obs)
 
         # Initial feature encoding - separate for base and joint nodes
-        x = self.node_feature_extractor(x_feature_dict, edge_index)
+        x = self.node_feature_extractor(x_feature_dict)
         
         # Message passing layers
         for conv in self.convs:
