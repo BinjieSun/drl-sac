@@ -4,9 +4,9 @@ import math
 from torch import nn
 import torch.nn.functional as F
 from torch import distributions as pyd
-
+from torch_geometric.nn import Linear
 import utils
-
+from agent.mygnn import MyGNN
 
 class TanhTransform(pyd.transforms.Transform):
     domain = pyd.constraints.real
@@ -62,8 +62,10 @@ class DiagGaussianActor(nn.Module):
         super().__init__()
 
         self.log_std_bounds = log_std_bounds
-        self.trunk = utils.mlp(obs_dim, hidden_dim, 2 * action_dim,
-                               hidden_depth)
+        # self.trunk = utils.mlp(obs_dim, hidden_dim, 2 * action_dim,
+        #                        hidden_depth)
+        
+        self.trunk = MyGNN('humanoid-v5', hidden_dim)
 
         self.outputs = dict()
         self.apply(utils.weight_init)
@@ -89,6 +91,29 @@ class DiagGaussianActor(nn.Module):
         for k, v in self.outputs.items():
             logger.log_histogram(f'train_actor/{k}_hist', v, step)
 
-        for i, m in enumerate(self.trunk):
-            if type(m) == nn.Linear:
-                logger.log_param(f'train_actor/fc{i}', m, step)
+        if isinstance(self.trunk, nn.Sequential):
+            # Original code for nn.Sequential
+            for i, m in enumerate(self.trunk):
+                if type(m) == nn.Linear:
+                    logger.log_param(f'train_actor/fc{i}', m, step)
+        else:
+            # New code for handling MyGNN objects
+            # Log parameters in node_feature_extractor
+            for node_id, mlp in self.trunk.node_feature_extractor.node_mlps.items():
+                for i, layer in enumerate(mlp):
+                    if isinstance(layer, nn.Linear):
+                        logger.log_param(f'train_actor/node_{node_id}_mlp_{i}', layer, step)
+            
+            # Log convolution layer parameters
+            for i, conv in enumerate(self.trunk.convs):
+                if hasattr(conv, 'lin'):
+                    logger.log_param(f'train_actor/conv_{i}_lin', conv.lin, step)
+                elif hasattr(conv, 'lin_l'):
+                    logger.log_param(f'train_actor/conv_{i}_lin_l', conv.lin_l, step)
+                elif hasattr(conv, 'lin_r'):
+                    logger.log_param(f'train_actor/conv_{i}_lin_r', conv.lin_r, step)
+            
+            # Log decoder parameters
+            for i, layer in enumerate(self.trunk.decoder):
+                if isinstance(layer, nn.Linear) or isinstance(layer, Linear):
+                    logger.log_param(f'train_actor/decoder_{i}', layer, step)
