@@ -58,14 +58,17 @@ class SquashedNormal(pyd.transformed_distribution.TransformedDistribution):
 class DiagGaussianActor(nn.Module):
     """torch.distributions implementation of an diagonal Gaussian policy."""
     def __init__(self, obs_dim, action_dim, hidden_dim, hidden_depth,
-                 log_std_bounds):
+                 log_std_bounds, trunk_type='mlp', env_name='ant'):
         super().__init__()
 
         self.log_std_bounds = log_std_bounds
-        # self.trunk = utils.mlp(obs_dim, hidden_dim, 2 * action_dim,
-        #                        hidden_depth)
-        
-        self.trunk = MyGNN('humanoid-v5', hidden_dim)
+        if trunk_type == 'mlp':
+            self.trunk = utils.mlp(obs_dim, hidden_dim, 2 * action_dim,
+                                   hidden_depth)
+        elif trunk_type == 'gnn':
+            self.trunk = MyGNN(env_name.lower(), hidden_dim)
+        else:
+            raise ValueError(f"Invalid trunk type: {trunk_type}")
 
         self.outputs = dict()
         self.apply(utils.weight_init)

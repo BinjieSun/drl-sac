@@ -10,13 +10,17 @@ from agent.mygnn import MyGNN
 
 class DoubleQCritic(nn.Module):
     """Critic network, employes double Q-learning."""
-    def __init__(self, obs_dim, action_dim, hidden_dim, hidden_depth):
+    def __init__(self, obs_dim, action_dim, hidden_dim, hidden_depth, trunk_type='mlp', env_name='ant'):
         super().__init__()
 
-        # self.Q1 = utils.mlp(obs_dim + action_dim, hidden_dim, 1, hidden_depth)
-        # self.Q2 = utils.mlp(obs_dim + action_dim, hidden_dim, 1, hidden_depth)
-        self.Q1 = MyGNN('humanoid-v5', hidden_dim, is_critic=True)
-        self.Q2 = MyGNN('humanoid-v5', hidden_dim, is_critic=True)
+        if trunk_type == 'mlp':
+            self.Q1 = utils.mlp(obs_dim + action_dim, hidden_dim, 1, hidden_depth)
+            self.Q2 = utils.mlp(obs_dim + action_dim, hidden_dim, 1, hidden_depth)
+        elif trunk_type == 'gnn':
+            self.Q1 = MyGNN(env_name.lower(), hidden_dim, is_critic=True)
+            self.Q2 = MyGNN(env_name.lower(), hidden_dim, is_critic=True)
+        else:
+            raise ValueError(f"Invalid trunk type: {trunk_type}")
 
         self.outputs = dict()
         self.apply(utils.weight_init)
