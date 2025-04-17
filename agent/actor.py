@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from torch import distributions as pyd
 
 import utils
-# from mygnn import MyGNN
+from agent.mygnn import MyGNN
 
 class TanhTransform(pyd.transforms.Transform):
     domain = pyd.constraints.real
@@ -62,10 +62,10 @@ class DiagGaussianActor(nn.Module):
         super().__init__()
 
         self.log_std_bounds = log_std_bounds
-        self.trunk = utils.mlp(obs_dim, hidden_dim, 2 * action_dim,
-                               hidden_depth)
+        # self.trunk = utils.mlp(obs_dim, hidden_dim, 2 * action_dim,
+        #                        hidden_depth)
         
-        # self.trunk = MyGNN(obs_dim, action_dim, hidden_dim, hidden_depth)
+        self.trunk = MyGNN('humanoid-v5', hidden_dim)
 
         self.outputs = dict()
         self.apply(utils.weight_init)
@@ -91,6 +91,11 @@ class DiagGaussianActor(nn.Module):
         for k, v in self.outputs.items():
             logger.log_histogram(f'train_actor/{k}_hist', v, step)
 
-        for i, m in enumerate(self.trunk):
-            if type(m) == nn.Linear:
-                logger.log_param(f'train_actor/fc{i}', m, step)
+        if isinstance(self.trunk, nn.Sequential):
+            # Original code for nn.Sequential
+            for i, m in enumerate(self.trunk):
+                if type(m) == nn.Linear:
+                    logger.log_param(f'train_actor/fc{i}', m, step)
+        else:
+            # New code for MyGNN
+            logger.log_param('train_actor/gnn', self.trunk, step)

@@ -5,17 +5,17 @@ import torch.nn.functional as F
 
 import utils
 
-# from mygnn import MyGNN
+from agent.mygnn import MyGNN
 
 class DoubleQCritic(nn.Module):
     """Critic network, employes double Q-learning."""
     def __init__(self, obs_dim, action_dim, hidden_dim, hidden_depth):
         super().__init__()
 
-        self.Q1 = utils.mlp(obs_dim + action_dim, hidden_dim, 1, hidden_depth)
-        self.Q2 = utils.mlp(obs_dim + action_dim, hidden_dim, 1, hidden_depth)
-        # self.Q1 = MyGNN(obs_dim, action_dim, hidden_dim, hidden_depth)
-        # self.Q2 = MyGNN(obs_dim, action_dim, hidden_dim, hidden_depth)
+        # self.Q1 = utils.mlp(obs_dim + action_dim, hidden_dim, 1, hidden_depth)
+        # self.Q2 = utils.mlp(obs_dim + action_dim, hidden_dim, 1, hidden_depth)
+        self.Q1 = MyGNN('humanoid-v5', hidden_dim, is_critic=True)
+        self.Q2 = MyGNN('humanoid-v5', hidden_dim, is_critic=True)
 
         self.outputs = dict()
         self.apply(utils.weight_init)
@@ -35,10 +35,15 @@ class DoubleQCritic(nn.Module):
     def log(self, logger, step):
         for k, v in self.outputs.items():
             logger.log_histogram(f'train_critic/{k}_hist', v, step)
-
-        assert len(self.Q1) == len(self.Q2)
-        for i, (m1, m2) in enumerate(zip(self.Q1, self.Q2)):
-            assert type(m1) == type(m2)
-            if type(m1) is nn.Linear:
-                logger.log_param(f'train_critic/q1_fc{i}', m1, step)
-                logger.log_param(f'train_critic/q2_fc{i}', m2, step)
+                
+        if isinstance(self.Q1, nn.Sequential) and isinstance(self.Q2, nn.Sequential):
+            # Original code for nn.Sequential
+            for i, (m1, m2) in enumerate(zip(self.Q1, self.Q2)):
+                assert type(m1) == type(m2)
+                if type(m1) is nn.Linear:
+                    logger.log_param(f'train_critic/q1_fc{i}', m1, step)
+                    logger.log_param(f'train_critic/q2_fc{i}', m2, step)
+        else:
+            # New code for MyGNN
+            logger.log_param('train_critic/q1_gnn', self.Q1, step)
+            logger.log_param('train_critic/q2_gnn', self.Q2, step)

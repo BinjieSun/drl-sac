@@ -11,6 +11,7 @@ class NodeTypeSpecificMLP(nn.Module):
         super(NodeTypeSpecificMLP, self).__init__()
         # Create MLPs for each node type
         self.node_mlps = nn.ModuleDict()
+        self.hidden_channels = hidden_channels
         
         for node_id, node_info in nodes_dict.items():
             input_dim = len(node_info['feature_indices'])
@@ -28,7 +29,7 @@ class NodeTypeSpecificMLP(nn.Module):
         
         for node_id, mlp in self.node_mlps.items():
             # Extract relevant features and pass them through the corresponding MLP
-            node_features = x_feature_dict[node_id]
+            node_features = x_feature_dict[int(node_id)]
             node_output = mlp(node_features)
             output.append(node_output.unsqueeze(1))
         
@@ -39,7 +40,7 @@ class MyGNN(torch.nn.Module):
     """
     Standard GNN
     """
-    def __init__(self, task, hidden_channels: int, num_layers: int, 
+    def __init__(self, task, hidden_channels: int = 128, num_layers: int = 8, 
                 activation_fn = nn.ELU(), batch_size: int = 1024, is_critic: bool = False):
         """
         Implementation of a standard GNN model for C2 structure.
@@ -54,6 +55,7 @@ class MyGNN(torch.nn.Module):
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         
         self.batch_size = batch_size
+        self.is_critic = is_critic
         
         if 'humanoid' in task:
             '''
@@ -112,13 +114,13 @@ class MyGNN(torch.nn.Module):
                 self.nodes_dict[key]['feature_indices'].extend([*range(175 + key * 6, 175 + (key + 1) * 6)])
                 # qfrc_actuator
                 if len(self.nodes_dict[key]['qfrc_actuator_indices']) > 0:
-                    self.nodes_dict[key]['feature_indices'].extend(253 + self.nodes_dict[key]['qfrc_actuator_indices'])
+                    self.nodes_dict[key]['feature_indices'].extend([253 + idx for idx in self.nodes_dict[key]['qfrc_actuator_indices']])
                 # cfrc_ext
                 self.nodes_dict[key]['feature_indices'].extend([*range(270 + key * 6, 270 + (key + 1) * 6)])
                 
             if self.is_critic:
                 # current joint actions
-                self.nodes_dict[key]['feature_indices'].extend(348 + self.nodes_dict[key]['qfrc_actuator_indices'])
+                self.nodes_dict[key]['feature_indices'].extend([348 + idx for idx in self.nodes_dict[key]['qfrc_actuator_indices']])
                 
             node_2_node = torch.tensor([[0, 1, 2, 3, 4, 2, 6, 7, 0, 9, 0, 11],
                                         [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]])
@@ -184,7 +186,7 @@ class MyGNN(torch.nn.Module):
         if batch_size == self.batch_size:
             edge_index = self.edge_index_batch_default
         elif batch_size == 1:
-            edge_index = self.edge_index
+            edge_index = self.edge_index.to(self.device)
         else:
             edge_index = self._create_edge_index_batch(batch_size)
             
