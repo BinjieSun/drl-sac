@@ -30,9 +30,10 @@ class NodeTypeSpecificMLP(nn.Module):
             # Extract relevant features and pass them through the corresponding MLP
             node_features = x_feature_dict[node_id]
             node_output = mlp(node_features)
-            output.append(node_output)
-            
-        return torch.cat(output, dim=0)
+            output.append(node_output.unsqueeze(1))
+        
+        output = torch.cat(output, dim=1).reshape(-1, self.hidden_channels)            
+        return output # [batch_size * num_nodes, hidden_channels]
 
 class MyGNN(torch.nn.Module):
     """
@@ -149,7 +150,7 @@ class MyGNN(torch.nn.Module):
             self.decoder = nn.Sequential(
                 Linear(hidden_channels * self.num_nodes, hidden_channels),
                 self.activation,
-                Linear(hidden_channels, self.num_joints)
+                Linear(hidden_channels, self.num_joints*2)
             )
 
         # Create batched edge indices for common batch sizes
@@ -210,7 +211,7 @@ class MyGNN(torch.nn.Module):
             x = x_new
         
         # For critic, use all node embeddings
-        x_reshaped = x.reshape(batch_size, -1)  # [batch_size, num_nodes * hidden_channels]
+        x_reshaped = x.reshape(batch_size, self.num_nodes, -1).flatten(1)  # [batch_size, num_nodes * hidden_channels]
         final_output = self.decoder(x_reshaped)  # [batch_size, 1]
 
         return final_output
