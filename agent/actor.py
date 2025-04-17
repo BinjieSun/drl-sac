@@ -62,10 +62,10 @@ class DiagGaussianActor(nn.Module):
         super().__init__()
 
         self.log_std_bounds = log_std_bounds
-        # self.trunk = utils.mlp(obs_dim, hidden_dim, 2 * action_dim,
+        self.trunk = utils.mlp(obs_dim, hidden_dim, 2 * action_dim,
                                hidden_depth)
         
-        self.trunk = MyGNN(obs_dim, action_dim, hidden_dim, hidden_depth)
+        # self.trunk = MyGNN(obs_dim, action_dim, hidden_dim, hidden_depth)
 
         self.outputs = dict()
         self.apply(utils.weight_init)
