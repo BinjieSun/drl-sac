@@ -5,7 +5,7 @@ env_type: gym
 env: Humanoid-v5
 
 # this needs to be specified manually
-experiment: test_exp_seed3407
+experiment: test_exp_seed1
 
 num_train_steps: 1e7 # default: 1e6
 replay_buffer_capacity: 1e6
@@ -25,7 +25,7 @@ log_save_tb: true
 save_video: true
 
 
-seed: 3407
+seed: 1
 
 ckpt_frequency: 1000
 resume_training: false

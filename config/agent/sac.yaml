@@ -20,7 +20,7 @@ agent:
     critic_tau: 0.005
     critic_target_update_frequency: 2
     batch_size: 256
-    learnable_temperature: false # TODO: Attention
+    learnable_temperature: True # TODO: Attention! True for SAC++, False for SAC
     
 double_q_critic:
   class: agent.critic.DoubleQCritic
