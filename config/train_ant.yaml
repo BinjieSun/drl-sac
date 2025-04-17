@@ -1,11 +1,12 @@
 defaults:
     - agent: sac
 
-env_type: gym
-env: Ant-v5
+common:
+    env_name: Ant-v5
+    trunk_type: gnn
 
-# this needs to be specified manually
-experiment: test_exp_seed1
+env_type: gym
+env: ${common.env_name}
 
 num_train_steps: 3e6 # default: 1e6
 replay_buffer_capacity: 1e6
@@ -37,4 +38,4 @@ save_summary_freq: 100
 hydra:
     name: ${env}
     run:
-        dir: ./exp/${now:%Y.%m.%d}/${now:%H%M}_${agent.name}_${experiment}
+        dir: ./exp/${common.env_name}/${common.trunk_type}/${now:%Y.%m.%d-%H%M}_${agent.name}

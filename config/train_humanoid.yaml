@@ -1,11 +1,12 @@
 defaults:
     - agent: sac
-    - common:
-        env_name: Humanoid-v5
-        trunk_type: gnn
+
+common:
+    env_name: Humanoid-v5
+    trunk_type: gnn
 
 env_type: gym
-env: ${defaults.common.env_name}
+env: ${common.env_name}
 
 num_train_steps: 1e7 # default: 1e6
 replay_buffer_capacity: 1e6
@@ -37,4 +38,4 @@ save_summary_freq: 100
 hydra:
     name: ${env}
     run:
-        dir: ./exp/${now:%Y.%m.%d}/${now:%H%M}_${agent.name}
+        dir: ./exp/${common.env_name}/${common.trunk_type}/${now:%Y.%m.%d-%H%M}_${agent.name}

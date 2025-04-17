@@ -29,8 +29,8 @@ double_q_critic:
     action_dim: ${agent.params.action_dim}
     hidden_dim: 256
     hidden_depth: 2
-    trunk_type: ${defaults.common.trunk_type}
-    env_name: ${defaults.common.env_name}
+    trunk_type: ${common.trunk_type}
+    env_name: ${common.env_name}
     
 diag_gaussian_actor:
   class: agent.actor.DiagGaussianActor
@@ -40,5 +40,5 @@ diag_gaussian_actor:
     hidden_depth: 2
     hidden_dim: 256
     log_std_bounds: [-5, 2]
-    trunk_type: ${defaults.common.trunk_type}
-    env_name: ${defaults.common.env_name}
+    trunk_type: ${common.trunk_type}
+    env_name: ${common.env_name}
