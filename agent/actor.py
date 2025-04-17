@@ -4,7 +4,7 @@ import math
 from torch import nn
 import torch.nn.functional as F
 from torch import distributions as pyd
-
+from torch_geometric.nn import Linear
 import utils
 from agent.mygnn import MyGNN
 
@@ -97,5 +97,23 @@ class DiagGaussianActor(nn.Module):
                 if type(m) == nn.Linear:
                     logger.log_param(f'train_actor/fc{i}', m, step)
         else:
-            # New code for MyGNN
-            logger.log_param('train_actor/gnn', self.trunk, step)
+            # New code for handling MyGNN objects
+            # Log parameters in node_feature_extractor
+            for node_id, mlp in self.trunk.node_feature_extractor.node_mlps.items():
+                for i, layer in enumerate(mlp):
+                    if isinstance(layer, nn.Linear):
+                        logger.log_param(f'train_actor/node_{node_id}_mlp_{i}', layer, step)
+            
+            # Log convolution layer parameters
+            for i, conv in enumerate(self.trunk.convs):
+                if hasattr(conv, 'lin'):
+                    logger.log_param(f'train_actor/conv_{i}_lin', conv.lin, step)
+                elif hasattr(conv, 'lin_l'):
+                    logger.log_param(f'train_actor/conv_{i}_lin_l', conv.lin_l, step)
+                elif hasattr(conv, 'lin_r'):
+                    logger.log_param(f'train_actor/conv_{i}_lin_r', conv.lin_r, step)
+            
+            # Log decoder parameters
+            for i, layer in enumerate(self.trunk.decoder):
+                if isinstance(layer, nn.Linear) or isinstance(layer, Linear):
+                    logger.log_param(f'train_actor/decoder_{i}', layer, step)

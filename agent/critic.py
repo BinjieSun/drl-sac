@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from torch import nn
 import torch.nn.functional as F
+from torch_geometric.nn import Linear
 
 import utils
 
@@ -44,6 +45,45 @@ class DoubleQCritic(nn.Module):
                     logger.log_param(f'train_critic/q1_fc{i}', m1, step)
                     logger.log_param(f'train_critic/q2_fc{i}', m2, step)
         else:
-            # New code for MyGNN
-            logger.log_param('train_critic/q1_gnn', self.Q1, step)
-            logger.log_param('train_critic/q2_gnn', self.Q2, step)
+            # New code for handling MyGNN objects
+            # Log Q1 parameters
+            # Log parameters in node_feature_extractor
+            for node_id, mlp in self.Q1.node_feature_extractor.node_mlps.items():
+                for i, layer in enumerate(mlp):
+                    if isinstance(layer, nn.Linear):
+                        logger.log_param(f'train_critic/q1_node_{node_id}_mlp_{i}', layer, step)
+            
+            # Log convolution layer parameters
+            for i, conv in enumerate(self.Q1.convs):
+                if hasattr(conv, 'lin'):
+                    logger.log_param(f'train_critic/q1_conv_{i}_lin', conv.lin, step)
+                elif hasattr(conv, 'lin_l'):
+                    logger.log_param(f'train_critic/q1_conv_{i}_lin_l', conv.lin_l, step)
+                elif hasattr(conv, 'lin_r'):
+                    logger.log_param(f'train_critic/q1_conv_{i}_lin_r', conv.lin_r, step)
+            
+            # Log decoder parameters
+            for i, layer in enumerate(self.Q1.decoder):
+                if isinstance(layer, nn.Linear) or isinstance(layer, Linear):
+                    logger.log_param(f'train_critic/q1_decoder_{i}', layer, step)
+            
+            # Log Q2 parameters
+            # Log parameters in node_feature_extractor
+            for node_id, mlp in self.Q2.node_feature_extractor.node_mlps.items():
+                for i, layer in enumerate(mlp):
+                    if isinstance(layer, nn.Linear):
+                        logger.log_param(f'train_critic/q2_node_{node_id}_mlp_{i}', layer, step)
+            
+            # Log convolution layer parameters
+            for i, conv in enumerate(self.Q2.convs):
+                if hasattr(conv, 'lin'):
+                    logger.log_param(f'train_critic/q2_conv_{i}_lin', conv.lin, step)
+                elif hasattr(conv, 'lin_l'):
+                    logger.log_param(f'train_critic/q2_conv_{i}_lin_l', conv.lin_l, step)
+                elif hasattr(conv, 'lin_r'):
+                    logger.log_param(f'train_critic/q2_conv_{i}_lin_r', conv.lin_r, step)
+            
+            # Log decoder parameters
+            for i, layer in enumerate(self.Q2.decoder):
+                if isinstance(layer, nn.Linear) or isinstance(layer, Linear):
+                    logger.log_param(f'train_critic/q2_decoder_{i}', layer, step)
