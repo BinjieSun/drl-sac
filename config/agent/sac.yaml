@@ -19,8 +19,8 @@ agent:
     critic_betas: [0.9, 0.999]
     critic_tau: 0.005
     critic_target_update_frequency: 2
-    batch_size: 2048
-    learnable_temperature: true
+    batch_size: 256
+    learnable_temperature: True # TODO: Attention! True for SAC++, False for SAC
     
 double_q_critic:
   class: agent.critic.DoubleQCritic

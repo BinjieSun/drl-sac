@@ -2,12 +2,12 @@ defaults:
     - agent: sac
 
 env_type: gym
-env: Ant-v5
+env: Hopper-v5
 
 # this needs to be specified manually
 experiment: test_exp_seed1
 
-num_train_steps: 3e6 # default: 1e6
+num_train_steps: 1e6 # default: 1e6
 replay_buffer_capacity: 1e6
 
 num_seed_steps: 5000
