@@ -23,31 +23,75 @@ class MyGNN(torch.nn.Module):
         super().__init__()
         self.activation = activation_fn
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-
-        # Total number of nodes (combining base and joint)
-        self.num_base_nodes = 1
-        self.num_joint_nodes = 12
-        self.num_nodes = self.num_base_nodes + self.num_joint_nodes
         
         # Create a single edge_index for all connections
         self.edge_index = self._create_edges_index()
         
         self.is_critic = is_critic
         
-        if 'push_door' in task:
-            self.num_timesteps = 5
-            self.common_obs_base_indices = [*range(0, 6), *range(30, 43)]
-            self.common_obs_joint_indices = [*range(6, 30)]
-            if self.is_critic:
-                self.privileged_obs_base_indices = [*range(8), *range(20, 35)]
-                self.privileged_obs_joint_indices = [*range(8, 20)]
+        if 'humanoid' in task:
+            '''
+            348 features
+            | Joint Name      | Joint Index | *qpos & *qvel Feature Index          | qfrc_actuator Index |
+            |-----------------|-------------|--------------------------------------|---------------------|
+            | torso           | 0           | *range(0, 5), *range(22, 28)         |                     |
+            | lwaist          | 1           | *range(5, 7), *range(28, 30)         |                     |
+            | pelvis          | 2           | 7, 30                                | 0, 1, 2             |
+            | right_thigh     | 3           | *range(8, 12), *range(31, 35)        | 3, 4, 5             |
+            | right_shin      | 4           | 11, 34                               | 6                   |
+            | right_foot      | 5           |                                      |                     |
+            | left_thigh      | 6           | *range(12, 16), *range(35, 39)       | 7, 8, 9             |
+            | left_shin       | 7           | 15, 38                               | 10                  |
+            | left_foot       | 8           |                                      |                     |
+            | right_upper_arm | 9           | *range(16, 19), *range(39, 42)       | 11, 12              |
+            | right_lower_arm | 10          | 18, 41                               | 13                  |
+            | left_upper_arm  | 11          | *range(19, 22), *range(42, 45)       | 14, 15              |
+            | left_lower_arm  | 12          | 21, 44                               | 16                  |
+
+            - *cinert (130 elements):* Mass and inertia of the rigid body parts relative to the center of mass,
+            (this is an intermediate result of the transition).
+            It has shape 13*10 (*nbody * 10*).
+            (cinert - inertia matrix and body mass offset and body mass)
+            - *cvel (78 elements):* Center of mass based velocity.
+            It has shape 13 * 6 (*nbody * 6*).
+            (com velocity - velocity x, y, z and angular velocity x, y, z)
+            - *qfrc_actuator (17 elements):* Constraint force generated as the actuator force at each joint.
+            This has shape `(17,)`  *(nv * 1)*.
+            - *cfrc_ext (78 elements):* This is the center of mass based external force on the body parts.
+            It has shape 13 * 6 (*nbody * 6*) and thus adds another 78 elements to the observation space.
+            (external forces - force x, y, z and torque x, y, z)
+
+            '''
+            
+            # Total number of nodes (combining base and joint)
+            self.num_nodes = 13
+            self.nodes_dict = {
+                0: {'name': 'torso', 'feature_indices': [*range(0, 5), *range(22, 28)], 'qfrc_actuator_indices': []},
+                1: {'name': 'lwaist', 'feature_indices': [*range(5, 7), *range(28, 30)], 'qfrc_actuator_indices': []},
+                2: {'name': 'pelvis', 'feature_indices': [7, 30], 'qfrc_actuator_indices': [0, 1, 2]},
+                3: {'name': 'right_thigh', 'feature_indices': [*range(8, 12), *range(31, 35)], 'qfrc_actuator_indices': [3, 4, 5]},
+                4: {'name': 'right_shin', 'feature_indices': [11, 34], 'qfrc_actuator_indices': [6]},
+                5: {'name': 'right_foot', 'feature_indices': [], 'qfrc_actuator_indices': []},
+                6: {'name': 'left_thigh', 'feature_indices': [*range(12, 16), *range(35, 39)], 'qfrc_actuator_indices': [7, 8, 9]},
+                7: {'name': 'left_shin', 'feature_indices': [15, 38], 'qfrc_actuator_indices': [10]},
+                8: {'name': 'left_foot', 'feature_indices': [], 'qfrc_actuator_indices': []},
+                9: {'name': 'right_upper_arm', 'feature_indices': [*range(16, 19), *range(39, 42)], 'qfrc_actuator_indices': [11, 12]},
+                10: {'name': 'right_lower_arm', 'feature_indices': [18, 41], 'qfrc_actuator_indices': [13]},
+                11: {'name': 'left_upper_arm', 'feature_indices': [*range(19, 22), *range(42, 45)], 'qfrc_actuator_indices': [14, 15]},
+                12: {'name': 'left_lower_arm', 'feature_indices': [21, 44], 'qfrc_actuator_indices': [16]}
+            }
+            for key, value in self.nodes_dict.items():
+                # cinert
+                self.nodes_dict[key]['feature_indices'].extend([*range(45 + key * 10, 45 + (key + 1) * 10)])
+                # cvel
+                self.nodes_dict[key]['feature_indices'].extend([*range(175 + key * 6, 175 + (key + 1) * 6)])
+                # qfrc_actuator
+                if len(self.nodes_dict[key]['qfrc_actuator_indices']) > 0:
+                    self.nodes_dict[key]['feature_indices'].extend(253 + self.nodes_dict[key]['qfrc_actuator_indices'])
+                # cfrc_ext
+                self.nodes_dict[key]['feature_indices'].extend([*range(270 + key * 6, 270 + (key + 1) * 6)])
         else:
-            self.num_timesteps = 3
-            self.common_obs_base_indices = [*range(9), *range(45, 47)]
-            self.common_obs_joint_indices = [*range(9, 45)]
-            if self.is_critic:
-                self.privileged_obs_base_indices = [*range(8), *range(20, 35)]
-                self.privileged_obs_joint_indices = [*range(8, 20)]
+            pass
         
         self.len_common_obs = self.num_timesteps * (len(self.common_obs_base_indices) + len(self.common_obs_joint_indices))
         
