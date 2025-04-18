@@ -151,3 +151,31 @@ HalfCheetah-v5
 | fshin           | 4           | 0, 1, 8, 9, 10, 6, 15  | 21             |
 | ffoot           | 5           | 0, 1, 8, 9, 10, 7, 16  | 22             |
 '''
+
+'''
+Walker2d-v5
+
+             torso
+               |
+               |
+               |
+      0 bthigh ---- 3 fthigh
+      /               \
+     /                 \
+  1 bshin               4 fshin
+   /                     \
+  /                       \
+ 2 bfoot                  5 ffoot
+
+
+6 nodes, 17 features
+| Joint Name      | Joint Index | Feature Index          | Actuator Index |
+|-----------------|-------------|------------------------|----------------|
+| rthigh          | 0           | 0, 1, 8, 9, 10, 2, 11  | 17             |
+| rshin           | 1           | 0, 1, 8, 9, 10, 3, 12  | 18             |
+| rfoot           | 2           | 0, 1, 8, 9, 10, 4, 13  | 19             |
+| lthigh          | 3           | 0, 1, 8, 9, 10, 5, 14  | 20             |
+| lshin           | 4           | 0, 1, 8, 9, 10, 6, 15  | 21             |
+| lfoot           | 5           | 0, 1, 8, 9, 10, 7, 16  | 22             |
+
+'''
