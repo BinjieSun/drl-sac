@@ -120,7 +120,8 @@ class MyGNN(torch.nn.Module):
                 
                 if self.is_critic:
                     # current joint actions
-                    self.nodes_dict[key]['feature_indices'].extend([348 + idx for idx in self.nodes_dict[key]['qfrc_actuator_indices']])
+                    if len(self.nodes_dict[key]['qfrc_actuator_indices']) > 0:
+                        self.nodes_dict[key]['feature_indices'].extend([348 + idx for idx in self.nodes_dict[key]['qfrc_actuator_indices']])
                 
             node_2_node = torch.tensor([[0, 1, 2, 3, 4, 2, 6, 7, 0, 9, 0, 11],
                                         [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]])
@@ -274,7 +275,7 @@ class MyGNN(torch.nn.Module):
         
         # For critic, use all node embeddings
         x_reshaped = x.reshape(batch_size, self.num_nodes, -1).flatten(1)  # [batch_size, num_nodes * hidden_channels]
-        final_output = self.decoder(x_reshaped)  # [batch_size, 1]
+        final_output = self.decoder(x_reshaped)  # [batch_size, 17*2 / 1]
 
         return final_output
     
