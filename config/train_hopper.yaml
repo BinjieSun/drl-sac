@@ -38,4 +38,4 @@ save_summary_freq: 100
 hydra:
     name: ${env}
     run:
-        dir: ./exp/${defaults.common.env_name}/${defaults.common.trunk_type}/${now:%H%M}_${agent.name}
+        dir: ./exp/${common.env_name}/${common.trunk_type}/${now:%H%M}_${agent.name}

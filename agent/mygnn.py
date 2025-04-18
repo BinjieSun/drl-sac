@@ -118,9 +118,9 @@ class MyGNN(torch.nn.Module):
                 # cfrc_ext
                 self.nodes_dict[key]['feature_indices'].extend([*range(270 + key * 6, 270 + (key + 1) * 6)])
                 
-            if self.is_critic:
-                # current joint actions
-                self.nodes_dict[key]['feature_indices'].extend([348 + idx for idx in self.nodes_dict[key]['qfrc_actuator_indices']])
+                if self.is_critic:
+                    # current joint actions
+                    self.nodes_dict[key]['feature_indices'].extend([348 + idx for idx in self.nodes_dict[key]['qfrc_actuator_indices']])
                 
             node_2_node = torch.tensor([[0, 1, 2, 3, 4, 2, 6, 7, 0, 9, 0, 11],
                                         [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]])
@@ -130,8 +130,68 @@ class MyGNN(torch.nn.Module):
             ], dim=1)
             
             self.num_joints = 17
-        else:
-            pass # TODO: add other robots
+
+        elif 'hopper' in task:
+            """
+            ## Action Space
+            The action space is a `Box(-1, 1, (3,), float32)`. An action represents the torques applied at the hinge joints.
+
+            | Num | Action                             | Control Min | Control Max | Name (in corresponding XML file) | Joint | Type (Unit)  |
+            |-----|------------------------------------|-------------|-------------|----------------------------------|-------|--------------|
+            | 0   | Torque applied on the thigh rotor  | -1          | 1           | thigh_joint                      | hinge | torque (N m) |
+            | 1   | Torque applied on the leg rotor    | -1          | 1           | leg_joint                        | hinge | torque (N m) |
+            | 2   | Torque applied on the foot rotor   | -1          | 1           | foot_joint                       | hinge | torque (N m) |
+
+            ## Observation Space
+            The observation space consists of the following parts (in order):
+
+            - *qpos (5 elements by default):* Position values of the robot's body parts.
+            - *qvel (6 elements):* The velocities of these individual body parts (their derivatives).
+
+            By default, the observation does not include the robot's x-coordinate (`rootx`).
+            This can  be included by passing `exclude_current_positions_from_observation=False` during construction.
+            In this case, the observation space will be a `Box(-Inf, Inf, (12,), float64)`, where the first observation element is the x-coordinate of the robot.
+            Regardless of whether `exclude_current_positions_from_observation` is set to `True` or `False`, the x- and y-coordinates are returned in `info` with the keys `"x_position"` and `"y_position"`, respectively.
+
+            By default, however, the observation space is a `Box(-Inf, Inf, (11,), float64)` where the elements are as follows:
+
+            | Num | Observation                                        | Min  | Max | Name (in corresponding XML file) | Joint | Type (Unit)              |
+            | --- | -------------------------------------------------- | ---- | --- | -------------------------------- | ----- | ------------------------ |
+            | 0   | z-coordinate of the torso (height of hopper)       | -Inf | Inf | rootz                            | slide | position (m)             |
+            | 1   | angle of the torso                                 | -Inf | Inf | rooty                            | hinge | angle (rad)              |
+            | 2   | angle of the thigh joint                           | -Inf | Inf | thigh_joint                      | hinge | angle (rad)              |
+            | 3   | angle of the leg joint                             | -Inf | Inf | leg_joint                        | hinge | angle (rad)              |
+            | 4   | angle of the foot joint                            | -Inf | Inf | foot_joint                       | hinge | angle (rad)              |
+            | 5   | velocity of the x-coordinate of the torso          | -Inf | Inf | rootx                          | slide | velocity (m/s)           |
+            | 6   | velocity of the z-coordinate (height) of the torso | -Inf | Inf | rootz                          | slide | velocity (m/s)           |
+            | 7   | angular velocity of the angle of the torso         | -Inf | Inf | rooty                          | hinge | angular velocity (rad/s) |
+            | 8   | angular velocity of the thigh hinge                | -Inf | Inf | thigh_joint                      | hinge | angular velocity (rad/s) |
+            | 9   | angular velocity of the leg hinge                  | -Inf | Inf | leg_joint                        | hinge | angular velocity (rad/s) |
+            | 10  | angular velocity of the foot hinge                 | -Inf | Inf | foot_joint                       | hinge | angular velocity (rad/s) |
+            | excluded | x-coordinate of the torso                     | -Inf | Inf | rootx                            | slide | position (m)             |
+            """
+            # Total number of nodes
+            self.num_nodes = 4
+            self.nodes_dict = {
+                0: {'name': 'torso', 'feature_indices': [*range(0, 2), *range(5, 8)], 'qfrc_actuator_indices': []},
+                1: {'name': 'thigh', 'feature_indices': [*range(2, 3), *range(8, 9)], 'qfrc_actuator_indices': [0]},
+                2: {'name': 'leg', 'feature_indices': [*range(3, 4), *range(9, 10)], 'qfrc_actuator_indices': [1]},
+                3: {'name': 'foot', 'feature_indices': [*range(4, 5), *range(10, 11)], 'qfrc_actuator_indices': [2]},
+            }
+            for key, value in self.nodes_dict.items():
+                if self.is_critic:
+                    # current joint actions
+                    if len(self.nodes_dict[key]['qfrc_actuator_indices']) > 0:
+                        self.nodes_dict[key]['feature_indices'].extend([11 + idx for idx in self.nodes_dict[key]['qfrc_actuator_indices']])
+                
+            node_2_node = torch.tensor([[0, 1, 2],
+                                        [1, 2, 3]])
+
+            self.edge_index = torch.cat([
+                node_2_node, node_2_node.flip(0)
+            ], dim=1)
+            
+            self.num_joints = 3
         
         # Create separate encoders for base and joint nodes
         self.node_feature_extractor = NodeTypeSpecificMLP(self.nodes_dict, hidden_channels, activation_fn)
