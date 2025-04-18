@@ -281,7 +281,8 @@ class MyGNN(torch.nn.Module):
             # Total number of nodes
             self.num_nodes = 9
             self.nodes_dict = {
-                0: {'name': 'torso', 'feature_indices': [*range(0, 5), *range(13, 19), *range(27, 33)], 'qfrc_actuator_indices': [0, 2, 4, 6]},
+                # 0: {'name': 'torso', 'feature_indices': [*range(0, 5), *range(13, 19), *range(27, 33)], 'qfrc_actuator_indices': [0, 2, 4, 6]},
+                0: {'name': 'torso', 'feature_indices': [*range(0, 6), 7, 9, 11, *range(13, 20), 21, 23, 25, *range(27, 33)], 'qfrc_actuator_indices': [0, 2, 4, 6]},
                 1: {'name': 'aux_1', 'feature_indices': [*range(5, 7), *range(19, 21), *range(33, 39), *range(39, 45)], 'qfrc_actuator_indices': [2, 3]},
                 2: {'name': 'ankle_1', 'feature_indices': [*range(6, 7), *range(20, 21), *range(33, 39), *range(45, 51)], 'qfrc_actuator_indices': [3]},
                 3: {'name': 'aux_2', 'feature_indices': [*range(7, 9), *range(21, 23), *range(51, 57), *range(57, 63)], 'qfrc_actuator_indices': [4, 5]},
