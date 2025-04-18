@@ -174,9 +174,9 @@ class MyGNN(torch.nn.Module):
             # Total number of nodes
             self.num_nodes = 4
             self.nodes_dict = {
-                0: {'name': 'torso', 'feature_indices': [*range(0, 2), *range(5, 8)], 'qfrc_actuator_indices': []},
-                1: {'name': 'thigh', 'feature_indices': [*range(2, 3), *range(8, 9)], 'qfrc_actuator_indices': [0]},
-                2: {'name': 'leg', 'feature_indices': [*range(3, 4), *range(9, 10)], 'qfrc_actuator_indices': [1]},
+                0: {'name': 'torso', 'feature_indices': [*range(0, 2), *range(5, 8)], 'qfrc_actuator_indices': [0]},
+                1: {'name': 'thigh', 'feature_indices': [*range(2, 3), *range(8, 9)], 'qfrc_actuator_indices': [0, 1]},
+                2: {'name': 'leg', 'feature_indices': [*range(3, 4), *range(9, 10)], 'qfrc_actuator_indices': [1, 2]},
                 3: {'name': 'foot', 'feature_indices': [*range(4, 5), *range(10, 11)], 'qfrc_actuator_indices': [2]},
             }
             for key, value in self.nodes_dict.items():
@@ -193,6 +193,118 @@ class MyGNN(torch.nn.Module):
             ], dim=1)
             
             self.num_joints = 3
+
+        elif 'ant' in task:
+            """
+            ## Action Space
+            The action space is a `Box(-1, 1, (8,), float32)`. An action represents the torques applied at the hinge joints.
+
+            | Num | Action                                                            | Control Min | Control Max | Name (in corresponding XML file) | Joint | Type (Unit)  |
+            | --- | ----------------------------------------------------------------- | ----------- | ----------- | -------------------------------- | ----- | ------------ |
+            | 0   | Torque applied on the rotor between the torso and back right hip  | -1          | 1           | hip_4 (right_back_leg)           | hinge | torque (N m) |
+            | 1   | Torque applied on the rotor between the back right two links      | -1          | 1           | angle_4 (right_back_leg)         | hinge | torque (N m) |
+            | 2   | Torque applied on the rotor between the torso and front left hip  | -1          | 1           | hip_1 (front_left_leg)           | hinge | torque (N m) |
+            | 3   | Torque applied on the rotor between the front left two links      | -1          | 1           | angle_1 (front_left_leg)         | hinge | torque (N m) |
+            | 4   | Torque applied on the rotor between the torso and front right hip | -1          | 1           | hip_2 (front_right_leg)          | hinge | torque (N m) |
+            | 5   | Torque applied on the rotor between the front right two links     | -1          | 1           | angle_2 (front_right_leg)        | hinge | torque (N m) |
+            | 6   | Torque applied on the rotor between the torso and back left hip   | -1          | 1           | hip_3 (back_leg)                 | hinge | torque (N m) |
+            | 7   | Torque applied on the rotor between the back left two links       | -1          | 1           | angle_3 (back_leg)               | hinge | torque (N m) |
+
+
+            ## Observation Space
+            The observation space consists of the following parts (in order):
+
+            - *qpos (13 elements by default):* Position values of the robot's body parts.
+            - *qvel (14 elements):* The velocities of these individual body parts (their derivatives).
+            - *cfrc_ext (78 elements):* This is the center of mass based external forces on the body parts.
+            It has shape 13 * 6 (*nbody * 6*) and hence adds another 78 elements to the state space.
+            (external forces - force x, y, z and torque x, y, z)
+
+            By default, the observation does not include the x- and y-coordinates of the torso.
+            These can be included by passing `exclude_current_positions_from_observation=False` during construction.
+            In this case, the observation space will be a `Box(-Inf, Inf, (107,), float64)`, where the first two observations are the x- and y-coordinates of the torso.
+            Regardless of whether `exclude_current_positions_from_observation` is set to `True` or `False`, the x- and y-coordinates are returned in `info` with the keys `"x_position"` and `"y_position"`, respectively.
+
+            By default, however, the observation space is a `Box(-Inf, Inf, (105,), float64)`, where the position and velocity elements are as follows:
+
+            | Num | Observation                                                  | Min    | Max    | Name (in corresponding XML file)       | Joint | Type (Unit)              |
+            |-----|--------------------------------------------------------------|--------|--------|----------------------------------------|-------|--------------------------|
+            | 0   | z-coordinate of the torso (centre)                           | -Inf   | Inf    | root                                   | free  | position (m)             |
+            | 1   | w-orientation of the torso (centre)                          | -Inf   | Inf    | root                                   | free  | angle (rad)              |
+            | 2   | x-orientation of the torso (centre)                          | -Inf   | Inf    | root                                   | free  | angle (rad)              |
+            | 3   | y-orientation of the torso (centre)                          | -Inf   | Inf    | root                                   | free  | angle (rad)              |
+            | 4   | z-orientation of the torso (centre)                          | -Inf   | Inf    | root                                   | free  | angle (rad)              |
+            | 5   | angle between torso and first link on front left             | -Inf   | Inf    | hip_1 (front_left_leg)                 | hinge | angle (rad)              |
+            | 6   | angle between the two links on the front left                | -Inf   | Inf    | ankle_1 (front_left_leg)               | hinge | angle (rad)              |
+            | 7   | angle between torso and first link on front right            | -Inf   | Inf    | hip_2 (front_right_leg)                | hinge | angle (rad)              |
+            | 8   | angle between the two links on the front right               | -Inf   | Inf    | ankle_2 (front_right_leg)              | hinge | angle (rad)              |
+            | 9   | angle between torso and first link on back left              | -Inf   | Inf    | hip_3 (back_leg)                       | hinge | angle (rad)              |
+            | 10  | angle between the two links on the back left                 | -Inf   | Inf    | ankle_3 (back_leg)                     | hinge | angle (rad)              |
+            | 11  | angle between torso and first link on back right             | -Inf   | Inf    | hip_4 (right_back_leg)                 | hinge | angle (rad)              |
+            | 12  | angle between the two links on the back right                | -Inf   | Inf    | ankle_4 (right_back_leg)               | hinge | angle (rad)              |
+            | 13  | x-coordinate velocity of the torso                           | -Inf   | Inf    | root                                   | free  | velocity (m/s)           |
+            | 14  | y-coordinate velocity of the torso                           | -Inf   | Inf    | root                                   | free  | velocity (m/s)           |
+            | 15  | z-coordinate velocity of the torso                           | -Inf   | Inf    | root                                   | free  | velocity (m/s)           |
+            | 16  | x-coordinate angular velocity of the torso                   | -Inf   | Inf    | root                                   | free  | angular velocity (rad/s) |
+            | 17  | y-coordinate angular velocity of the torso                   | -Inf   | Inf    | root                                   | free  | angular velocity (rad/s) |
+            | 18  | z-coordinate angular velocity of the torso                   | -Inf   | Inf    | root                                   | free  | angular velocity (rad/s) |
+            | 19  | angular velocity of angle between torso and front left link  | -Inf   | Inf    | hip_1 (front_left_leg)                 | hinge | angle (rad)              |
+            | 20  | angular velocity of the angle between front left links       | -Inf   | Inf    | ankle_1 (front_left_leg)               | hinge | angle (rad)              |
+            | 21  | angular velocity of angle between torso and front right link | -Inf   | Inf    | hip_2 (front_right_leg)                | hinge | angle (rad)              |
+            | 22  | angular velocity of the angle between front right links      | -Inf   | Inf    | ankle_2 (front_right_leg)              | hinge | angle (rad)              |
+            | 23  | angular velocity of angle between torso and back left link   | -Inf   | Inf    | hip_3 (back_leg)                       | hinge | angle (rad)              |
+            | 24  | angular velocity of the angle between back left links        | -Inf   | Inf    | ankle_3 (back_leg)                     | hinge | angle (rad)              |
+            | 25  | angular velocity of angle between torso and back right link  | -Inf   | Inf    | hip_4 (right_back_leg)                 | hinge | angle (rad)              |
+            | 26  | angular velocity of the angle between back right links       | -Inf   | Inf    | ankle_4 (right_back_leg)               | hinge | angle (rad)              |
+            | excluded | x-coordinate of the torso (centre)                      | -Inf   | Inf    | root                                   | free  | position (m)             |
+            | excluded | y-coordinate of the torso (centre)                      | -Inf   | Inf    | root                                   | free  | position (m)             |
+
+            The body parts are:
+
+            | body part                 | id (for `v2`, `v3`, `v4)` | id (for `v5`) |
+            |  -----------------------  |  ---   |  ---  |
+            | worldbody (note: all values are constant 0) | 0  |excluded|
+            | torso                     | 1  |0       |
+            | front_left_leg            | 2  |1       |
+            | aux_1 (front left leg)    | 3  |2       |
+            | ankle_1 (front left leg)  | 4  |3       |
+            | front_right_leg           | 5  |4       |
+            | aux_2 (front right leg)   | 6  |5       |
+            | ankle_2 (front right leg) | 7  |6       |
+            | back_leg (back left leg)  | 8  |7       |
+            | aux_3 (back left leg)     | 9  |8       |
+            | ankle_3 (back left leg)   | 10 |9       |
+            | right_back_leg            | 11 |10      |
+            | aux_4 (back right leg)    | 12 |11      |
+            | ankle_4 (back right leg)  | 13 |12      |
+            """
+            # Total number of nodes
+            self.num_nodes = 9
+            self.nodes_dict = {
+                0: {'name': 'torso', 'feature_indices': [*range(0, 5), *range(13, 19), *range(27, 33)], 'qfrc_actuator_indices': [0, 2, 4, 6]},
+                1: {'name': 'aux_1', 'feature_indices': [*range(5, 7), *range(19, 21), *range(33, 39), *range(39, 45)], 'qfrc_actuator_indices': [2, 3]},
+                2: {'name': 'ankle_1', 'feature_indices': [*range(6, 7), *range(20, 21), *range(33, 39), *range(45, 51)], 'qfrc_actuator_indices': [3]},
+                3: {'name': 'aux_2', 'feature_indices': [*range(7, 9), *range(21, 23), *range(51, 57), *range(57, 63)], 'qfrc_actuator_indices': [4, 5]},
+                4: {'name': 'ankle_2', 'feature_indices': [*range(8, 9), *range(22, 23), *range(51, 57), *range(63, 69)], 'qfrc_actuator_indices': [5]},
+                5: {'name': 'aux_3', 'feature_indices': [*range(9, 11), *range(23, 25), *range(69, 75), *range(75, 81)], 'qfrc_actuator_indices': [6, 7]},
+                6: {'name': 'ankle_3', 'feature_indices': [*range(10, 11), *range(24, 25), *range(69, 75), *range(81, 87)], 'qfrc_actuator_indices': [7]},
+                7: {'name': 'aux_4', 'feature_indices': [*range(11, 13), *range(25, 27), *range(87, 93), *range(93, 99)], 'qfrc_actuator_indices': [0, 1]},
+                8: {'name': 'ankle_4', 'feature_indices': [*range(12, 13), *range(26, 27), *range(87, 93), *range(99, 105)], 'qfrc_actuator_indices': [1]},
+            }
+            for key, value in self.nodes_dict.items():
+                if self.is_critic:
+                    # current joint actions
+                    if len(self.nodes_dict[key]['qfrc_actuator_indices']) > 0:
+                        self.nodes_dict[key]['feature_indices'].extend([105 + idx for idx in self.nodes_dict[key]['qfrc_actuator_indices']])
+                
+            node_2_node = torch.tensor([[0, 1, 0, 3, 0, 5, 0, 7],
+                                        [1, 2, 3, 4, 5, 6, 7, 8]])
+
+            self.edge_index = torch.cat([
+                node_2_node, node_2_node.flip(0)
+            ], dim=1)
+            
+            self.num_joints = 8
         
         # Create separate encoders for base and joint nodes
         self.node_feature_extractor = NodeTypeSpecificMLP(self.nodes_dict, hidden_channels, activation_fn)
