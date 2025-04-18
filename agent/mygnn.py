@@ -173,10 +173,16 @@ class MyGNN(torch.nn.Module):
             """
             # Total number of nodes
             self.num_nodes = 4
+            # self.nodes_dict = {
+            #     0: {'name': 'torso', 'feature_indices': [*range(0, 2), *range(5, 8)], 'qfrc_actuator_indices': [0]},
+            #     1: {'name': 'thigh', 'feature_indices': [*range(2, 3), *range(8, 9)], 'qfrc_actuator_indices': [0, 1]},
+            #     2: {'name': 'leg', 'feature_indices': [*range(3, 4), *range(9, 10)], 'qfrc_actuator_indices': [1, 2]},
+            #     3: {'name': 'foot', 'feature_indices': [*range(4, 5), *range(10, 11)], 'qfrc_actuator_indices': [2]},
+            # }
             self.nodes_dict = {
-                0: {'name': 'torso', 'feature_indices': [*range(0, 2), *range(5, 8)], 'qfrc_actuator_indices': [0]},
-                1: {'name': 'thigh', 'feature_indices': [*range(2, 3), *range(8, 9)], 'qfrc_actuator_indices': [0, 1]},
-                2: {'name': 'leg', 'feature_indices': [*range(3, 4), *range(9, 10)], 'qfrc_actuator_indices': [1, 2]},
+                0: {'name': 'torso', 'feature_indices': [*range(0, 2), *range(5, 8)], 'qfrc_actuator_indices': []},
+                1: {'name': 'thigh', 'feature_indices': [*range(2, 3), *range(8, 9)], 'qfrc_actuator_indices': [0]},
+                2: {'name': 'leg', 'feature_indices': [*range(3, 4), *range(9, 10)], 'qfrc_actuator_indices': [1]},
                 3: {'name': 'foot', 'feature_indices': [*range(4, 5), *range(10, 11)], 'qfrc_actuator_indices': [2]},
             }
             for key, value in self.nodes_dict.items():
