@@ -131,8 +131,56 @@ class MyGNN(torch.nn.Module):
             ], dim=1)
             
             self.num_joints = 17
+        elif 'halfcheetah' in task or 'walker2d' in task:
+            '''
+            HalfCheetah-v5
+                                           front_tip
+                                          /
+                                         /
+                                        /
+                      0 bthigh ---- 3 fthigh
+                      /               \
+                     /                 \
+                  1 bshin               4 fshin
+                 /                        \
+                /                          \
+            2 bfoot                      5 ffoot
+            
+            6 nodes, 17 features
+            | Joint Name      | Joint Index | Feature Index          | Actuator Index |
+            |-----------------|-------------|------------------------|----------------|
+            | bthigh          | 0           | 0, 1, 8, 9, 10, 2, 11  | 17             |
+            | bshin           | 1           | 0, 1, 8, 9, 10, 3, 12  | 18             |
+            | bfoot           | 2           | 0, 1, 8, 9, 10, 4, 13  | 19             |
+            | fthigh          | 3           | 0, 1, 8, 9, 10, 5, 14  | 20             |
+            | fshin           | 4           | 0, 1, 8, 9, 10, 6, 15  | 21             |
+            | ffoot           | 5           | 0, 1, 8, 9, 10, 7, 16  | 22             |
+            '''
+            self.num_nodes = 6
+            self.num_joints = 6
+            self.nodes_dict = {
+                0: {'name': 'bthigh', 'feature_indices': [0, 1, 8, 9, 10, 2, 11], 'qfrc_actuator_indices': [17]},
+                1: {'name': 'bshin', 'feature_indices': [0, 1, 8, 9, 10, 3, 12], 'qfrc_actuator_indices': [18]},
+                2: {'name': 'bfoot', 'feature_indices': [0, 1, 8, 9, 10, 4, 13], 'qfrc_actuator_indices': [19]},
+                3: {'name': 'fthigh', 'feature_indices': [0, 1, 8, 9, 10, 5, 14], 'qfrc_actuator_indices': [20]},
+                4: {'name': 'fshin', 'feature_indices': [0, 1, 8, 9, 10, 6, 15], 'qfrc_actuator_indices': [21]},
+                5: {'name': 'ffoot', 'feature_indices': [0, 1, 8, 9, 10, 7, 16], 'qfrc_actuator_indices': [22]},
+            }
+            if self.is_critic:
+                for key, value in self.nodes_dict.items():
+                    self.nodes_dict[key]['feature_indices'].extend(value['qfrc_actuator_indices'])
+                
+            node_2_node = torch.tensor([[0, 1, 2, 3, 4, 2, 5],
+                                        [1, 2, 3, 4, 5, 3, 4]])
+
+            self.edge_index = torch.cat([
+                node_2_node, node_2_node.flip(0)
+            ], dim=1)
+            
         else:
-            pass # TODO: add other robots
+            # TODO: add other robots
+            print('Not implemented')
+            pass
         
         # Create separate encoders for base and joint nodes
         self.node_feature_extractor = NodeTypeSpecificMLP(self.nodes_dict, hidden_channels, activation_fn)
