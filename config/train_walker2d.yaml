@@ -1,0 +1,41 @@
+defaults:
+    - agent: sac
+
+common:
+    env_name: Walker2d-v5
+    trunk_type: gnn
+
+env_type: gym
+env: ${common.env_name}
+
+num_train_steps: 1e7 # default: 1e6
+replay_buffer_capacity: 1e6
+
+num_seed_steps: 5000
+
+eval_frequency: 10000
+num_eval_episodes: 10
+
+device: cuda
+
+# logger
+log_frequency: 10000
+log_save_tb: true
+
+# video recorder
+save_video: true
+
+
+seed: 1
+
+ckpt_frequency: 1000
+resume_training: false
+
+save_summary_freq: 100
+
+
+# hydra configuration
+hydra:
+    name: ${env}
+    run:
+        dir: ./exp/${common.env_name}/${common.trunk_type}/${now:%Y.%m.%d-%H%M}_${agent.name}
