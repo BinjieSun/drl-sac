@@ -1,5 +1,5 @@
 defaults:
-    - agent: sac
+    - agent: sac_hopper
 
 common:
     env_name: Hopper-v5

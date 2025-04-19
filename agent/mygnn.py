@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from torch_geometric.nn import Linear, GraphConv
+from torch_geometric.nn import Linear, GraphConv, LayerNorm
 from copy import deepcopy
 
 class NodeTypeSpecificMLP(nn.Module):
@@ -170,6 +170,12 @@ class MyGNN(torch.nn.Module):
             | 9   | angular velocity of the leg hinge                  | -Inf | Inf | leg_joint                        | hinge | angular velocity (rad/s) |
             | 10  | angular velocity of the foot hinge                 | -Inf | Inf | foot_joint                       | hinge | angular velocity (rad/s) |
             | excluded | x-coordinate of the torso                     | -Inf | Inf | rootx                            | slide | position (m)             |
+            
+            | Joint Index | Node Index | 
+             |-------------|------------|
+             | 0           | 1       |
+             | 1           | 2       |
+             | 2           | 3       |
             """
             # Total number of nodes
             self.num_nodes = 4
@@ -199,6 +205,10 @@ class MyGNN(torch.nn.Module):
             ], dim=1)
             
             self.num_joints = 3
+
+            self.joint_node_mapping = [
+                 [1], [2], [3]
+             ]
 
         elif 'ant' in task:
             """
@@ -283,6 +293,17 @@ class MyGNN(torch.nn.Module):
             | right_back_leg            | 11 |10      |
             | aux_4 (back right leg)    | 12 |11      |
             | ankle_4 (back right leg)  | 13 |12      |
+
+             | Joint Index | Node Index | 
+             |-------------|------------|
+             | 0           | 0, 7       |
+             | 1           | 7, 8       |
+             | 2           | 0, 1       |
+             | 3           | 1, 2       |
+             | 4           | 0, 3       |
+             | 5           | 3, 4       |
+             | 6           | 0, 5       |
+             | 7           | 5, 6       |
             """
             # Total number of nodes
             self.num_nodes = 9
@@ -312,15 +333,26 @@ class MyGNN(torch.nn.Module):
             ], dim=1)
             
             self.num_joints = 8
+
+            self.joint_node_mapping = [
+                 [0, 7], [7, 8], [0, 1], [1, 2], [0, 3], [3, 4], [0, 5], [5, 6]
+             ]
         
         # Create separate encoders for base and joint nodes
         self.node_feature_extractor = NodeTypeSpecificMLP(self.nodes_dict, hidden_channels, activation_fn)
 
         # Create standard graph convolutions for each layer
         self.convs = torch.nn.ModuleList()
+        # self.norms = torch.nn.ModuleList()  # Add layer norms
+        # self.dropout = nn.Dropout(p=0.1)    # Add dropout
+
         for _ in range(num_layers):
             # Use standard GraphConv for all edges
             self.convs.append(GraphConv(hidden_channels, hidden_channels))
+            
+        # for _ in range(num_layers):
+        #     self.convs.append(GraphConv(hidden_channels, hidden_channels))
+        #     self.norms.append(LayerNorm(hidden_channels))  # Per-node normalization
         
         if self.is_critic:
             self.decoder = nn.Sequential(
@@ -330,9 +362,9 @@ class MyGNN(torch.nn.Module):
             )
         else:
             self.decoder = nn.Sequential(
-                Linear(hidden_channels * self.num_nodes, hidden_channels),
+                Linear(hidden_channels, hidden_channels//2),
                 self.activation,
-                Linear(hidden_channels, self.num_joints*2)
+                Linear(hidden_channels//2, 2)
             )
 
         # Create batched edge indices for common batch sizes
@@ -371,6 +403,21 @@ class MyGNN(torch.nn.Module):
             edge_index = self._create_edge_index_batch(batch_size)
             
         return x_feature_dict, edge_index
+    
+    def _get_joint_features(self, x):
+         '''
+         x: [batch_size, num_nodes, hidden_channels]
+         return: [batch_size * num_joints, hidden_channel]
+         '''
+         batch_size, _, hidden_channels = x.shape
+         joint_features = []
+         for mapping in self.joint_node_mapping:
+             if len(mapping) == 2:
+                 joint_features.append((x[:, mapping[0], :] + x[:, mapping[1], :]) / 2)
+             elif len(mapping) == 1:
+                 joint_features.append(x[:, mapping[0], :])
+         joint_features = torch.cat(joint_features, dim=1)
+         return joint_features.reshape(batch_size * self.num_joints, hidden_channels)
 
     def forward(self, obs):
         '''
@@ -392,9 +439,22 @@ class MyGNN(torch.nn.Module):
             x_new = self.activation(x_new)
             x = x_new
         
+        # for conv, norm in zip(self.convs, self.norms):
+        #     residual = x  # Save for skip connection
+        #     x = conv(x, edge_index)
+        #     x = norm(x)               # Normalize node features
+        #     x = self.activation(x)
+        #     x = self.dropout(x)
+        #     x = x + residual          # Residual connection
+
+        
         # For critic, use all node embeddings
-        x_reshaped = x.reshape(batch_size, self.num_nodes, -1).flatten(1)  # [batch_size, num_nodes * hidden_channels]
-        final_output = self.decoder(x_reshaped)  # [batch_size, 17*2 / 1]
+        if self.is_critic:
+            x_reshaped = x.reshape(batch_size, self.num_nodes, -1).flatten(1)  # [batch_size, num_nodes * hidden_channels]
+            final_output = self.decoder(x_reshaped)  # [batch_size, 17*2]
+        else: 
+            x_reshaped = x.reshape(batch_size, self.num_nodes, -1)  #.flatten(1)  # [batch_size, num_nodes, hidden_channels]
+            final_output = self.decoder(self._get_joint_features(x_reshaped)).reshape(batch_size, self.num_joints, 2).permute(0, 2, 1).flatten(1)
 
         return final_output
     
