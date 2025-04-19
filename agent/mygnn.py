@@ -34,7 +34,7 @@ class NodeTypeSpecificMLP(nn.Module):
             output.append(node_output.unsqueeze(1))
         
         output = torch.cat(output, dim=1).reshape(-1, self.hidden_channels)            
-        return output # [batch_size * num_nodes, hidden_channels]
+        return output # [batch_size * num_nodes, hidden_channels]    
 
 class MyGNN(torch.nn.Module):
     """
@@ -60,7 +60,7 @@ class MyGNN(torch.nn.Module):
         if 'humanoid' in task:
             '''
             348 features
-            | Joint Name      | Joint Index | *qpos & *qvel Feature Index          | qfrc_actuator Index |
+            | Node Name       | Node Index  | *qpos & *qvel Feature Index          | qfrc_actuator Index |
             |-----------------|-------------|--------------------------------------|---------------------|
             | torso           | 0           | *range(0, 5), *range(22, 28)         |                     |
             | lwaist          | 1           | *range(5, 7), *range(28, 30)         |                     |
@@ -88,10 +88,31 @@ class MyGNN(torch.nn.Module):
             - *cfrc_ext (78 elements):* This is the center of mass based external force on the body parts.
             It has shape 13 * 6 (*nbody * 6*) and thus adds another 78 elements to the observation space.
             (external forces - force x, y, z and torque x, y, z)
+            
+            | Joint Index | Node Index | 
+            |-------------|------------|
+            | 0           | 1, 2       |
+            | 1           | 1, 2       |
+            | 2           | 1, 2       |
+            | 3           | 2, 3       |
+            | 4           | 2, 3       |
+            | 5           | 2, 3       |
+            | 6           | 3, 4       |
+            | 7           | 2, 6       |
+            | 8           | 2, 6       |
+            | 9           | 2, 6       |
+            | 10          | 6, 7       |
+            | 11          | 0, 9       |
+            | 12          | 0, 9       |
+            | 13          | 9, 10      |
+            | 14          | 0, 11      |
+            | 15          | 0, 11      |
+            | 16          | 11, 12     |
 
             '''
             # Total number of nodes (combining base and joint)
             self.num_nodes = 13
+            self.num_joints = 17
             self.nodes_dict = {
                 0: {'name': 'torso', 'feature_indices': [*range(0, 5), *range(22, 28)], 'qfrc_actuator_indices': []},
                 1: {'name': 'lwaist', 'feature_indices': [*range(5, 7), *range(28, 30)], 'qfrc_actuator_indices': []},
@@ -130,7 +151,10 @@ class MyGNN(torch.nn.Module):
                 node_2_node, node_2_node.flip(0)
             ], dim=1)
             
-            self.num_joints = 17
+            self.joint_node_mapping = [
+                [1, 2], [1, 2], [1, 2], [2, 3], [2, 3], [2, 3], [3, 4], [2, 6], [2, 6], [2, 6], [6, 7], [0, 9], [0, 9], [9, 10], [0, 11], [0, 11], [11, 12]
+            ]
+
         elif 'halfcheetah' in task or 'walker2d' in task:
             '''
             HalfCheetah-v5
@@ -147,7 +171,7 @@ class MyGNN(torch.nn.Module):
             2 bfoot                      5 ffoot
             
             6 nodes, 17 features
-            | Joint Name      | Joint Index | Feature Index          | Actuator Index |
+            | Node Name       | Node Index  | Feature Index          | Actuator Index |
             |-----------------|-------------|------------------------|----------------|
             | bthigh          | 0           | 0, 1, 8, 9, 10, 2, 11  | 17             |
             | bshin           | 1           | 0, 1, 8, 9, 10, 3, 12  | 18             |
@@ -155,6 +179,15 @@ class MyGNN(torch.nn.Module):
             | fthigh          | 3           | 0, 1, 8, 9, 10, 5, 14  | 20             |
             | fshin           | 4           | 0, 1, 8, 9, 10, 6, 15  | 21             |
             | ffoot           | 5           | 0, 1, 8, 9, 10, 7, 16  | 22             |
+            
+            | Joint Index | Node Index | 
+            |-------------|------------|
+            | 0           | 0          |
+            | 1           | 1          |
+            | 2           | 2          |
+            | 3           | 3          |
+            | 4           | 4          |
+            | 5           | 5          |
             '''
             self.num_nodes = 6
             self.num_joints = 6
@@ -177,6 +210,10 @@ class MyGNN(torch.nn.Module):
                 node_2_node, node_2_node.flip(0)
             ], dim=1)
             
+            self.joint_node_mapping = [
+                [0], [1], [2], [3], [4], [5]
+            ]
+            
         else:
             # TODO: add other robots
             print('Not implemented')
@@ -198,10 +235,15 @@ class MyGNN(torch.nn.Module):
                 Linear(hidden_channels, 1)
             )
         else:
+            # self.decoder = nn.Sequential(
+            #     Linear(hidden_channels * self.num_nodes, hidden_channels),
+            #     self.activation,
+            #     Linear(hidden_channels, self.num_joints*2)
+            # )
             self.decoder = nn.Sequential(
-                Linear(hidden_channels * self.num_nodes, hidden_channels),
+                Linear(hidden_channels, int(hidden_channels / 2)),
                 self.activation,
-                Linear(hidden_channels, self.num_joints*2)
+                Linear(int(hidden_channels / 2), 2)
             )
 
         # Create batched edge indices for common batch sizes
@@ -240,6 +282,21 @@ class MyGNN(torch.nn.Module):
             edge_index = self._create_edge_index_batch(batch_size)
             
         return x_feature_dict, edge_index
+    
+    def _get_joint_features(self, x):
+        '''
+        x: [batch_size, num_nodes, hidden_channels]
+        return: [batch_size * num_joints, hidden_channel]
+        '''
+        batch_size, _, hidden_channels = x.shape
+        joint_features = []
+        for mapping in self.joint_node_mapping:
+            if len(mapping) == 2:
+                joint_features.append((x[:, mapping[0], :] + x[:, mapping[1], :]) / 2)
+            elif len(mapping) == 1:
+                joint_features.append(x[:, mapping[0], :])
+        joint_features = torch.cat(joint_features, dim=1)
+        return joint_features.reshape(batch_size * self.num_joints, hidden_channels)
 
     def forward(self, obs):
         '''
@@ -262,8 +319,12 @@ class MyGNN(torch.nn.Module):
             x = x_new
         
         # For critic, use all node embeddings
-        x_reshaped = x.reshape(batch_size, self.num_nodes, -1).flatten(1)  # [batch_size, num_nodes * hidden_channels]
-        final_output = self.decoder(x_reshaped)  # [batch_size, 17*2 / 1]
+        if self.is_critic:
+            x_reshaped = x.reshape(batch_size, self.num_nodes, -1).flatten(1)
+            final_output = self.decoder(x_reshaped)  # [batch_size, 1]
+        else:
+            x_reshaped = x.reshape(batch_size, self.num_nodes, -1)  #.flatten(1)  # [batch_size, num_nodes, hidden_channels]
+            final_output = self.decoder(self._get_joint_features(x_reshaped)).reshape(batch_size, self.num_joints, 2).permute(0, 2, 1).flatten(1)  # [batch_size, 2 * 17 / 1]
 
         return final_output
     
