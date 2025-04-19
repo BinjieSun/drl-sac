@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# CUDA_VISIBLE_DEVICES=0 python train_humanoid.py
 import numpy as np
 import torch
 import torch.nn as nn

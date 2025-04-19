@@ -1,5 +1,5 @@
 defaults:
-    - agent: sac
+    - agent: sac_halfcheetah
 
 common:
     env_name: HalfCheetah-v5
@@ -8,7 +8,7 @@ common:
 env_type: gym
 env: ${common.env_name}
 
-num_train_steps: 1e7 # default: 1e6
+num_train_steps: 3e6 # default: 1e6
 replay_buffer_capacity: 1e6
 
 num_seed_steps: 5000

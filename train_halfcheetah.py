@@ -276,7 +276,7 @@ class Workspace(object):
 @hydra.main(config_path='config/train_halfcheetah.yaml', strict=True)
 def main(cfg):
     if not hasattr(cfg, 'ckpt_frequency'):
-        cfg.ckpt_frequency = 100000 
+        cfg.ckpt_frequency = 10000 
     if not hasattr(cfg, 'resume_training'):
         cfg.resume_training = False 
     workspace = Workspace(cfg)
