@@ -272,9 +272,6 @@ class Workspace(object):
         # when all done, save checkpoint
         self.save_checkpoint()
 
-
-# @hydra.main(config_path='config/train.yaml', strict=True)
-# @hydra.main(config_path='config/train_humanoid.yaml', strict=True)
 @hydra.main(config_path='config/train_hopper.yaml', strict=True)
 def main(cfg):
     if not hasattr(cfg, 'ckpt_frequency'):

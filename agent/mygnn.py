@@ -56,7 +56,7 @@ class MyGNN(torch.nn.Module):
         
         self.batch_size = batch_size
         self.is_critic = is_critic
-        
+        self.task = task
         if 'humanoid' in task:
             '''
             348 features
@@ -134,196 +134,108 @@ class MyGNN(torch.nn.Module):
 
         elif 'hopper' in task:
             """
-            ## Action Space
-            The action space is a `Box(-1, 1, (3,), float32)`. An action represents the torques applied at the hinge joints.
+            Hopper-v5
+                torso
+                  |
+                0 thigh
+                  |
+                1 leg
+                  |
+                2 foot
 
-            | Num | Action                             | Control Min | Control Max | Name (in corresponding XML file) | Joint | Type (Unit)  |
-            |-----|------------------------------------|-------------|-------------|----------------------------------|-------|--------------|
-            | 0   | Torque applied on the thigh rotor  | -1          | 1           | thigh_joint                      | hinge | torque (N m) |
-            | 1   | Torque applied on the leg rotor    | -1          | 1           | leg_joint                        | hinge | torque (N m) |
-            | 2   | Torque applied on the foot rotor   | -1          | 1           | foot_joint                       | hinge | torque (N m) |
-
-            ## Observation Space
-            The observation space consists of the following parts (in order):
-
-            - *qpos (5 elements by default):* Position values of the robot's body parts.
-            - *qvel (6 elements):* The velocities of these individual body parts (their derivatives).
-
-            By default, the observation does not include the robot's x-coordinate (`rootx`).
-            This can  be included by passing `exclude_current_positions_from_observation=False` during construction.
-            In this case, the observation space will be a `Box(-Inf, Inf, (12,), float64)`, where the first observation element is the x-coordinate of the robot.
-            Regardless of whether `exclude_current_positions_from_observation` is set to `True` or `False`, the x- and y-coordinates are returned in `info` with the keys `"x_position"` and `"y_position"`, respectively.
-
-            By default, however, the observation space is a `Box(-Inf, Inf, (11,), float64)` where the elements are as follows:
-
-            | Num | Observation                                        | Min  | Max | Name (in corresponding XML file) | Joint | Type (Unit)              |
-            | --- | -------------------------------------------------- | ---- | --- | -------------------------------- | ----- | ------------------------ |
-            | 0   | z-coordinate of the torso (height of hopper)       | -Inf | Inf | rootz                            | slide | position (m)             |
-            | 1   | angle of the torso                                 | -Inf | Inf | rooty                            | hinge | angle (rad)              |
-            | 2   | angle of the thigh joint                           | -Inf | Inf | thigh_joint                      | hinge | angle (rad)              |
-            | 3   | angle of the leg joint                             | -Inf | Inf | leg_joint                        | hinge | angle (rad)              |
-            | 4   | angle of the foot joint                            | -Inf | Inf | foot_joint                       | hinge | angle (rad)              |
-            | 5   | velocity of the x-coordinate of the torso          | -Inf | Inf | rootx                          | slide | velocity (m/s)           |
-            | 6   | velocity of the z-coordinate (height) of the torso | -Inf | Inf | rootz                          | slide | velocity (m/s)           |
-            | 7   | angular velocity of the angle of the torso         | -Inf | Inf | rooty                          | hinge | angular velocity (rad/s) |
-            | 8   | angular velocity of the thigh hinge                | -Inf | Inf | thigh_joint                      | hinge | angular velocity (rad/s) |
-            | 9   | angular velocity of the leg hinge                  | -Inf | Inf | leg_joint                        | hinge | angular velocity (rad/s) |
-            | 10  | angular velocity of the foot hinge                 | -Inf | Inf | foot_joint                       | hinge | angular velocity (rad/s) |
-            | excluded | x-coordinate of the torso                     | -Inf | Inf | rootx                            | slide | position (m)             |
-            
-            | Joint Index | Node Index | 
-             |-------------|------------|
-             | 0           | 1       |
-             | 1           | 2       |
-             | 2           | 3       |
+            3 nodes, 11 features
+            | Node Name | Node Index  | Feature Index        | Actuator Index |
+            |-----------|-------------|----------------------|----------------|
+            | thigh     | 0           | 0, 1, 5, 6, 7, 2, 8  | 11             |
+            | shin      | 1           | 0, 1, 5, 6, 7, 3, 9  | 12             |
+            | foot      | 2           | 0, 1, 5, 6, 7, 4, 10 | 13             |
             """
-            # Total number of nodes
-            self.num_nodes = 4
-            # self.nodes_dict = {
-            #     0: {'name': 'torso', 'feature_indices': [*range(0, 2), *range(5, 8)], 'qfrc_actuator_indices': [0]},
-            #     1: {'name': 'thigh', 'feature_indices': [*range(2, 3), *range(8, 9)], 'qfrc_actuator_indices': [0, 1]},
-            #     2: {'name': 'leg', 'feature_indices': [*range(3, 4), *range(9, 10)], 'qfrc_actuator_indices': [1, 2]},
-            #     3: {'name': 'foot', 'feature_indices': [*range(4, 5), *range(10, 11)], 'qfrc_actuator_indices': [2]},
-            # }
+            self.num_nodes = 3
+            self.num_joints = 3
             self.nodes_dict = {
-                0: {'name': 'torso', 'feature_indices': [*range(0, 2), *range(5, 8)], 'qfrc_actuator_indices': []},
-                1: {'name': 'thigh', 'feature_indices': [*range(2, 3), *range(8, 9)], 'qfrc_actuator_indices': [0]},
-                2: {'name': 'leg', 'feature_indices': [*range(3, 4), *range(9, 10)], 'qfrc_actuator_indices': [1]},
-                3: {'name': 'foot', 'feature_indices': [*range(4, 5), *range(10, 11)], 'qfrc_actuator_indices': [2]},
+                0: {'name': 'torso', 'feature_indices': [0, 1, 5, 6, 7, 2, 8], 'qfrc_actuator_indices': [11]},
+                1: {'name': 'thigh', 'feature_indices': [0, 1, 5, 6, 7, 3, 9], 'qfrc_actuator_indices': [12]},
+                2: {'name': 'leg', 'feature_indices': [0, 1, 5, 6, 7, 4, 10], 'qfrc_actuator_indices': [13]}
             }
-            for key, value in self.nodes_dict.items():
-                if self.is_critic:
-                    # current joint actions
-                    if len(self.nodes_dict[key]['qfrc_actuator_indices']) > 0:
-                        self.nodes_dict[key]['feature_indices'].extend([11 + idx for idx in self.nodes_dict[key]['qfrc_actuator_indices']])
+            if self.is_critic:
+                for key, value in self.nodes_dict.items():
+                    self.nodes_dict[key]['feature_indices'].extend(value['qfrc_actuator_indices'])
                 
-            node_2_node = torch.tensor([[0, 1, 2],
-                                        [1, 2, 3]])
+            node_2_node = torch.tensor([[0, 1],
+                                        [1, 2]])
 
             self.edge_index = torch.cat([
                 node_2_node, node_2_node.flip(0)
             ], dim=1)
-            
-            self.num_joints = 3
 
             self.joint_node_mapping = [
-                 [1], [2], [3]
+                 [0], [1], [2]
              ]
 
         elif 'ant' in task:
             """
-            ## Action Space
-            The action space is a `Box(-1, 1, (8,), float32)`. An action represents the torques applied at the hinge joints.
-
-            | Num | Action                                                            | Control Min | Control Max | Name (in corresponding XML file) | Joint | Type (Unit)  |
-            | --- | ----------------------------------------------------------------- | ----------- | ----------- | -------------------------------- | ----- | ------------ |
-            | 0   | Torque applied on the rotor between the torso and back right hip  | -1          | 1           | hip_4 (right_back_leg)           | hinge | torque (N m) |
-            | 1   | Torque applied on the rotor between the back right two links      | -1          | 1           | angle_4 (right_back_leg)         | hinge | torque (N m) |
-            | 2   | Torque applied on the rotor between the torso and front left hip  | -1          | 1           | hip_1 (front_left_leg)           | hinge | torque (N m) |
-            | 3   | Torque applied on the rotor between the front left two links      | -1          | 1           | angle_1 (front_left_leg)         | hinge | torque (N m) |
-            | 4   | Torque applied on the rotor between the torso and front right hip | -1          | 1           | hip_2 (front_right_leg)          | hinge | torque (N m) |
-            | 5   | Torque applied on the rotor between the front right two links     | -1          | 1           | angle_2 (front_right_leg)        | hinge | torque (N m) |
-            | 6   | Torque applied on the rotor between the torso and back left hip   | -1          | 1           | hip_3 (back_leg)                 | hinge | torque (N m) |
-            | 7   | Torque applied on the rotor between the back left two links       | -1          | 1           | angle_3 (back_leg)               | hinge | torque (N m) |
-
-
-            ## Observation Space
-            The observation space consists of the following parts (in order):
-
-            - *qpos (13 elements by default):* Position values of the robot's body parts.
-            - *qvel (14 elements):* The velocities of these individual body parts (their derivatives).
-            - *cfrc_ext (78 elements):* This is the center of mass based external forces on the body parts.
-            It has shape 13 * 6 (*nbody * 6*) and hence adds another 78 elements to the state space.
-            (external forces - force x, y, z and torque x, y, z)
-
-            By default, the observation does not include the x- and y-coordinates of the torso.
-            These can be included by passing `exclude_current_positions_from_observation=False` during construction.
-            In this case, the observation space will be a `Box(-Inf, Inf, (107,), float64)`, where the first two observations are the x- and y-coordinates of the torso.
-            Regardless of whether `exclude_current_positions_from_observation` is set to `True` or `False`, the x- and y-coordinates are returned in `info` with the keys `"x_position"` and `"y_position"`, respectively.
-
-            By default, however, the observation space is a `Box(-Inf, Inf, (105,), float64)`, where the position and velocity elements are as follows:
-
-            | Num | Observation                                                  | Min    | Max    | Name (in corresponding XML file)       | Joint | Type (Unit)              |
-            |-----|--------------------------------------------------------------|--------|--------|----------------------------------------|-------|--------------------------|
-            | 0   | z-coordinate of the torso (centre)                           | -Inf   | Inf    | root                                   | free  | position (m)             |
-            | 1   | w-orientation of the torso (centre)                          | -Inf   | Inf    | root                                   | free  | angle (rad)              |
-            | 2   | x-orientation of the torso (centre)                          | -Inf   | Inf    | root                                   | free  | angle (rad)              |
-            | 3   | y-orientation of the torso (centre)                          | -Inf   | Inf    | root                                   | free  | angle (rad)              |
-            | 4   | z-orientation of the torso (centre)                          | -Inf   | Inf    | root                                   | free  | angle (rad)              |
-            | 5   | angle between torso and first link on front left             | -Inf   | Inf    | hip_1 (front_left_leg)                 | hinge | angle (rad)              |
-            | 6   | angle between the two links on the front left                | -Inf   | Inf    | ankle_1 (front_left_leg)               | hinge | angle (rad)              |
-            | 7   | angle between torso and first link on front right            | -Inf   | Inf    | hip_2 (front_right_leg)                | hinge | angle (rad)              |
-            | 8   | angle between the two links on the front right               | -Inf   | Inf    | ankle_2 (front_right_leg)              | hinge | angle (rad)              |
-            | 9   | angle between torso and first link on back left              | -Inf   | Inf    | hip_3 (back_leg)                       | hinge | angle (rad)              |
-            | 10  | angle between the two links on the back left                 | -Inf   | Inf    | ankle_3 (back_leg)                     | hinge | angle (rad)              |
-            | 11  | angle between torso and first link on back right             | -Inf   | Inf    | hip_4 (right_back_leg)                 | hinge | angle (rad)              |
-            | 12  | angle between the two links on the back right                | -Inf   | Inf    | ankle_4 (right_back_leg)               | hinge | angle (rad)              |
-            | 13  | x-coordinate velocity of the torso                           | -Inf   | Inf    | root                                   | free  | velocity (m/s)           |
-            | 14  | y-coordinate velocity of the torso                           | -Inf   | Inf    | root                                   | free  | velocity (m/s)           |
-            | 15  | z-coordinate velocity of the torso                           | -Inf   | Inf    | root                                   | free  | velocity (m/s)           |
-            | 16  | x-coordinate angular velocity of the torso                   | -Inf   | Inf    | root                                   | free  | angular velocity (rad/s) |
-            | 17  | y-coordinate angular velocity of the torso                   | -Inf   | Inf    | root                                   | free  | angular velocity (rad/s) |
-            | 18  | z-coordinate angular velocity of the torso                   | -Inf   | Inf    | root                                   | free  | angular velocity (rad/s) |
-            | 19  | angular velocity of angle between torso and front left link  | -Inf   | Inf    | hip_1 (front_left_leg)                 | hinge | angle (rad)              |
-            | 20  | angular velocity of the angle between front left links       | -Inf   | Inf    | ankle_1 (front_left_leg)               | hinge | angle (rad)              |
-            | 21  | angular velocity of angle between torso and front right link | -Inf   | Inf    | hip_2 (front_right_leg)                | hinge | angle (rad)              |
-            | 22  | angular velocity of the angle between front right links      | -Inf   | Inf    | ankle_2 (front_right_leg)              | hinge | angle (rad)              |
-            | 23  | angular velocity of angle between torso and back left link   | -Inf   | Inf    | hip_3 (back_leg)                       | hinge | angle (rad)              |
-            | 24  | angular velocity of the angle between back left links        | -Inf   | Inf    | ankle_3 (back_leg)                     | hinge | angle (rad)              |
-            | 25  | angular velocity of angle between torso and back right link  | -Inf   | Inf    | hip_4 (right_back_leg)                 | hinge | angle (rad)              |
-            | 26  | angular velocity of the angle between back right links       | -Inf   | Inf    | ankle_4 (right_back_leg)               | hinge | angle (rad)              |
-            | excluded | x-coordinate of the torso (centre)                      | -Inf   | Inf    | root                                   | free  | position (m)             |
-            | excluded | y-coordinate of the torso (centre)                      | -Inf   | Inf    | root                                   | free  | position (m)             |
-
-            The body parts are:
-
-            | body part                 | id (for `v2`, `v3`, `v4)` | id (for `v5`) |
-            |  -----------------------  |  ---   |  ---  |
-            | worldbody (note: all values are constant 0) | 0  |excluded|
-            | torso                     | 1  |0       |
-            | front_left_leg            | 2  |1       |
-            | aux_1 (front left leg)    | 3  |2       |
-            | ankle_1 (front left leg)  | 4  |3       |
-            | front_right_leg           | 5  |4       |
-            | aux_2 (front right leg)   | 6  |5       |
-            | ankle_2 (front right leg) | 7  |6       |
-            | back_leg (back left leg)  | 8  |7       |
-            | aux_3 (back left leg)     | 9  |8       |
-            | ankle_3 (back left leg)   | 10 |9       |
-            | right_back_leg            | 11 |10      |
-            | aux_4 (back right leg)    | 12 |11      |
-            | ankle_4 (back right leg)  | 13 |12      |
-
-             | Joint Index | Node Index | 
-             |-------------|------------|
-             | 0           | 0, 7       |
-             | 1           | 7, 8       |
-             | 2           | 0, 1       |
-             | 3           | 1, 2       |
-             | 4           | 0, 3       |
-             | 5           | 3, 4       |
-             | 6           | 0, 5       |
-             | 7           | 5, 6       |
+            Ant-v5
+            
+            ankle_4         ankle_3
+                \            /
+                 \          /
+                aux_4     aux_3
+                    \     /
+                     \   /
+                      root
+                     /   \
+                    /     \
+                  aux_2   aux_1
+                 /          \
+                /            \
+            ankle_2          ankle_1
+            
+            6 nodes, 17 features
+            | Node Name | Node Index  | Feature Index                | Actuator Index | cfrc_ext indices      |
+            |-----------|-------------|------------------------------|----------------|-----------------------|
+            | root      | 0           | *range(0, 5), *range(13, 19) |                | *range(0, 5)          |
+            | aux_1     | 1           | 5, 19                        | 0              | 5                     |
+            | ankle_1   | 2           | 6, 20                        | 1              | 6                     |
+            | aux_2     | 3           | 7, 21                        | 2              | 7                     |
+            | ankle_2   | 4           | 8, 22                        | 3              | 8                     |
+            | aux_3     | 5           | 9, 23                        | 4              | 9                     |
+            | ankle_3   | 6           | 10, 24                       | 5              | 10                    |
+            | aux_4     | 7           | 11, 25                       | 6              | 11                    |
+            | ankle_4   | 8           | 12, 26                       | 7              | 12                    |
+            
+            | Joint Index | Node Index | 
+            |-------------|------------|
+            | 0           | 0, 7       |
+            | 1           | 0, 8       |
+            | 2           | 0, 1       |
+            | 3           | 0, 2       |
+            | 4           | 0, 3       |
+            | 5           | 0, 4       |
+            | 6           | 0, 5       |
+            | 7           | 0, 6       |
             """
             # Total number of nodes
             self.num_nodes = 9
             self.nodes_dict = {
-                # 0: {'name': 'torso', 'feature_indices': [*range(0, 5), *range(13, 19), *range(27, 33)], 'qfrc_actuator_indices': [0, 2, 4, 6]},
-                0: {'name': 'torso', 'feature_indices': [*range(0, 6), 7, 9, 11, *range(13, 20), 21, 23, 25, *range(27, 33)], 'qfrc_actuator_indices': [0, 2, 4, 6]},
-                1: {'name': 'aux_1', 'feature_indices': [*range(5, 7), *range(19, 21), *range(33, 39), *range(39, 45)], 'qfrc_actuator_indices': [2, 3]},
-                2: {'name': 'ankle_1', 'feature_indices': [*range(6, 7), *range(20, 21), *range(33, 39), *range(45, 51)], 'qfrc_actuator_indices': [3]},
-                3: {'name': 'aux_2', 'feature_indices': [*range(7, 9), *range(21, 23), *range(51, 57), *range(57, 63)], 'qfrc_actuator_indices': [4, 5]},
-                4: {'name': 'ankle_2', 'feature_indices': [*range(8, 9), *range(22, 23), *range(51, 57), *range(63, 69)], 'qfrc_actuator_indices': [5]},
-                5: {'name': 'aux_3', 'feature_indices': [*range(9, 11), *range(23, 25), *range(69, 75), *range(75, 81)], 'qfrc_actuator_indices': [6, 7]},
-                6: {'name': 'ankle_3', 'feature_indices': [*range(10, 11), *range(24, 25), *range(69, 75), *range(81, 87)], 'qfrc_actuator_indices': [7]},
-                7: {'name': 'aux_4', 'feature_indices': [*range(11, 13), *range(25, 27), *range(87, 93), *range(93, 99)], 'qfrc_actuator_indices': [0, 1]},
-                8: {'name': 'ankle_4', 'feature_indices': [*range(12, 13), *range(26, 27), *range(87, 93), *range(99, 105)], 'qfrc_actuator_indices': [1]},
+                0: {'name': 'torso', 'feature_indices': [*range(0, 6), *range(13, 19)], 'qfrc_actuator_indices': [*range(0, 5)]},
+                1: {'name': 'aux_1', 'feature_indices': [5, 19], 'qfrc_actuator_indices': [5]},
+                2: {'name': 'ankle_1', 'feature_indices': [6, 20], 'qfrc_actuator_indices': [6]},
+                3: {'name': 'aux_2', 'feature_indices': [7, 21], 'qfrc_actuator_indices': [7]},
+                4: {'name': 'ankle_2', 'feature_indices': [8, 22], 'qfrc_actuator_indices': [8]},
+                5: {'name': 'aux_3', 'feature_indices': [9, 23], 'qfrc_actuator_indices': [9]},
+                6: {'name': 'ankle_3', 'feature_indices': [10, 24], 'qfrc_actuator_indices': [10]},
+                7: {'name': 'aux_4', 'feature_indices': [11, 25], 'qfrc_actuator_indices': [11]},
+                8: {'name': 'ankle_4', 'feature_indices': [12, 26], 'qfrc_actuator_indices': [12]},
             }
             for key, value in self.nodes_dict.items():
+                # cfrc_ext
+                if len(self.nodes_dict[key]['qfrc_actuator_indices']) > 0:
+                    for idx in self.nodes_dict[key]['qfrc_actuator_indices']:
+                        self.nodes_dict[key]['feature_indices'].extend(range(27 + idx * 6, 27 + (idx + 1) * 6))
                 if self.is_critic:
                     # current joint actions
-                    if len(self.nodes_dict[key]['qfrc_actuator_indices']) > 0:
-                        self.nodes_dict[key]['feature_indices'].extend([105 + idx for idx in self.nodes_dict[key]['qfrc_actuator_indices']])
+                    if int(key) != 0:    
+                        self.nodes_dict[key]['feature_indices'].extend([105 + int(key) - 1])
                 
             node_2_node = torch.tensor([[0, 1, 0, 3, 0, 5, 0, 7],
                                         [1, 2, 3, 4, 5, 6, 7, 8]])
@@ -335,8 +247,8 @@ class MyGNN(torch.nn.Module):
             self.num_joints = 8
 
             self.joint_node_mapping = [
-                 [0, 7], [7, 8], [0, 1], [1, 2], [0, 3], [3, 4], [0, 5], [5, 6]
-             ]
+                [0, 7], [0, 8], [0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [0, 6]
+            ]
         
         # Create separate encoders for base and joint nodes
         self.node_feature_extractor = NodeTypeSpecificMLP(self.nodes_dict, hidden_channels, activation_fn)
@@ -354,18 +266,32 @@ class MyGNN(torch.nn.Module):
         #     self.convs.append(GraphConv(hidden_channels, hidden_channels))
         #     self.norms.append(LayerNorm(hidden_channels))  # Per-node normalization
         
-        if self.is_critic:
-            self.decoder = nn.Sequential(
-                Linear(hidden_channels * self.num_nodes, hidden_channels),
-                self.activation,
-                Linear(hidden_channels, 1)
-            )
-        else:
-            self.decoder = nn.Sequential(
-                Linear(hidden_channels, hidden_channels//2),
-                self.activation,
-                Linear(hidden_channels//2, 2)
-            )
+        if 'ant' in task or 'humanoid' in task:
+            if self.is_critic:
+                self.decoder = nn.Sequential(
+                    Linear(hidden_channels * self.num_nodes, hidden_channels),
+                    self.activation,
+                    Linear(hidden_channels, 1)
+                )
+            else:
+                self.decoder = nn.Sequential(
+                    Linear(hidden_channels, int(hidden_channels/2)),
+                    self.activation,
+                    Linear(int(hidden_channels/2), 2)
+                )
+        elif 'hopper' in task:
+            if self.is_critic:
+                self.decoder = nn.Sequential(
+                    Linear(hidden_channels * self.num_nodes, hidden_channels),
+                    self.activation,
+                    Linear(hidden_channels, 1)
+                )
+            else:
+                self.decoder = nn.Sequential(
+                    Linear(hidden_channels * self.num_nodes, hidden_channels),
+                    self.activation,
+                    Linear(hidden_channels, self.num_joints * 2)
+                )
 
         # Create batched edge indices for common batch sizes
         self.edge_index_batch_default = self._create_edge_index_batch(self.batch_size).to(self.device)
@@ -405,19 +331,19 @@ class MyGNN(torch.nn.Module):
         return x_feature_dict, edge_index
     
     def _get_joint_features(self, x):
-         '''
-         x: [batch_size, num_nodes, hidden_channels]
-         return: [batch_size * num_joints, hidden_channel]
-         '''
-         batch_size, _, hidden_channels = x.shape
-         joint_features = []
-         for mapping in self.joint_node_mapping:
-             if len(mapping) == 2:
-                 joint_features.append((x[:, mapping[0], :] + x[:, mapping[1], :]) / 2)
-             elif len(mapping) == 1:
-                 joint_features.append(x[:, mapping[0], :])
-         joint_features = torch.cat(joint_features, dim=1)
-         return joint_features.reshape(batch_size * self.num_joints, hidden_channels)
+        '''
+        x: [batch_size, num_nodes, hidden_channels]
+        return: [batch_size * num_joints, hidden_channel]
+        '''
+        batch_size, _, hidden_channels = x.shape
+        joint_features = []
+        for mapping in self.joint_node_mapping:
+            if len(mapping) == 2:
+                joint_features.append((x[:, mapping[0], :] + x[:, mapping[1], :]) / 2)
+            elif len(mapping) == 1:
+                joint_features.append(x[:, mapping[0], :])
+        joint_features = torch.cat(joint_features, dim=1)
+        return joint_features.reshape(batch_size * self.num_joints, hidden_channels)
 
     def forward(self, obs):
         '''
@@ -449,12 +375,16 @@ class MyGNN(torch.nn.Module):
 
         
         # For critic, use all node embeddings
-        if self.is_critic:
+        if 'ant' in self.task or 'humanoid' in self.task:
+            if self.is_critic:
+                x_reshaped = x.reshape(batch_size, self.num_nodes, -1).flatten(1)  # [batch_size, num_nodes * hidden_channels]
+                final_output = self.decoder(x_reshaped)  # [batch_size, 17*2]
+            else: 
+                x_reshaped = x.reshape(batch_size, self.num_nodes, -1)  # [batch_size, num_nodes, hidden_channels]
+                final_output = self.decoder(self._get_joint_features(x_reshaped)).reshape(batch_size, self.num_joints, 2).permute(0, 2, 1).flatten(1)  # [batch_size, 2 * 17 / 1]
+        else:
             x_reshaped = x.reshape(batch_size, self.num_nodes, -1).flatten(1)  # [batch_size, num_nodes * hidden_channels]
             final_output = self.decoder(x_reshaped)  # [batch_size, 17*2]
-        else: 
-            x_reshaped = x.reshape(batch_size, self.num_nodes, -1)  #.flatten(1)  # [batch_size, num_nodes, hidden_channels]
-            final_output = self.decoder(self._get_joint_features(x_reshaped)).reshape(batch_size, self.num_joints, 2).permute(0, 2, 1).flatten(1)
 
         return final_output
     

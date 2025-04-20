@@ -1,5 +1,5 @@
 defaults:
-    - agent: sac
+    - agent: sac_ant
 
 common:
     env_name: Ant-v5
