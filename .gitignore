@@ -7,3 +7,5 @@ slurm
 ckpt
 .vscode
 backup
+figure/output
+figure/csv
