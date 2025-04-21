@@ -13,26 +13,15 @@ This SAC implementation extends the original one by introducing:
 
 ## Setup
 ### Running an experiment in Colab
-- Open `experiment.ipynb` in Google Colab
-- Follow the steps to clone the repository and install dependencies
-- Train an SAC agent
-
-### Running locally on your GPU
-- Clone the repository
-- Install dependencies: `pip install -r requirements.txt`
-- Train an SAC agent
-
-### Configurations
-To train the model, use:
-```bash
-python train.py
+- Open `experiment.ipynb` to install dependencies
+- Train an SAC agent using the different scripts
+```
+python train_walker2d.py
+python train_humanoid.py
 ```
 
-0r specify a different environment:
+The scripts could be found in both `swei-dev` branch and `swei-hopper` branch.
 
-```bash
-python train.py env_type=gym env=Hopper-v5
-```
 Modify configurations in the `config` folder to experiment with different model parameters. 
 
 Available environments:
